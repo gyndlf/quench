@@ -24,9 +24,7 @@ import qcodes_measurements as qcm
 from qcodes_measurements.device.states import ConnState
 
 
-#%%
-
-# Connect to instruments
+#%% Connect to instruments
 
 # close any open instruments 
 try:
@@ -47,9 +45,7 @@ mdac = MDAC.MDAC('mdac', 'ASRL11::INSTR')
 lockin = scfg.load_instrument('sr860_top')
 
 
-#%%
-
-# Create Si CMOS device
+#%% Create Si CMOS device
 
 def newSiDot():
     """Create a new Si device with named gates using qcodes_measurements"""
@@ -82,7 +78,7 @@ def newSiDot():
 
 si = newSiDot()
 
-#%%
+#%% Start Experiment
 
 # Sweep the discontinunity region
 
@@ -98,7 +94,7 @@ monty = Monty("SET.coulomb blocking", experiment)
 # optionally load the experiment here now
 monty = monty.loadexperiment()
 
-#%%
+#%% 2D Sweep ST
 
 # 2D sweep.
 
@@ -152,32 +148,32 @@ plt.xlabel("ST gate voltage")
 plt.ylabel("SLB/SRB gate voltage")
 monty.savefig(plt, "matrix")
 
-#%%
+#%% 1D Sweep ST
 
 # 1D sweep. Just to see if the peaks are actually still there
 
 pts = 400
 
-gate_range = np.linspace(2.5, 4.0, pts)
+gate_range = np.linspace(3.46, 3.56, pts)
 
 X = np.zeros((pts))
 Y = np.zeros((pts))
 R = np.zeros((pts))
 P = np.zeros((pts))
 
-v = 1.6
+v = 0.94
 
 parameters = {
-    "desc": "Quick 1D scan to see if there is any coulomb blocking at all.",
+    "desc": "Quick 1D scan to get some nice peaks",
     "ST":   f"range from {gate_range[0]}v to {gate_range[-1]}v, {pts}pts",
-    "SLB":  "1.0v",
-    "SRB":  "1.0v",
+    "SLB":  f"{v}v",
+    "SRB":  f"{v}v",
     }
 
-monty.newrun("single 1D scan", parameters)
+monty.newrun("1D scan", parameters)
 
-si.SLB(1.0)
-si.SRB(1.0)
+si.SLB(v)
+si.SRB(v)
 
 with tqdm(total=pts) as pbar:
     for (j, ST_voltage) in enumerate(gate_range):
@@ -198,6 +194,65 @@ fig = plt.figure()
 plt.plot(gate_range, R)
 
 plt.xlabel("ST gate voltage")
-plt.title(monty.runname)
+plt.title(monty.runname + f" @ {v}V")
 plt.ylabel("Current (R)")
 monty.savefig(plt, "1D")
+
+#%% Sweep SLB and SRB
+
+# Sweep SLB and SRB
+# Keep ST constant
+
+ST = 3.5
+
+SRB_pts = 201  # num points to sweep over SRB
+SLB_pts = 201
+
+SRB_gate_range = np.linspace(0.9, 1.0, SRB_pts)
+SLB_gate_range = np.linspace(0.9, 1.0, SLB_pts)
+
+X = np.zeros((SLB_pts, SRB_pts))
+Y = np.zeros((SLB_pts, SRB_pts))
+R = np.zeros((SLB_pts, SRB_pts))
+P = np.zeros((SLB_pts, SRB_pts))
+
+parameters = {
+    "desc": "Change the source/drain bias and observe effects. Higher res version",
+    "lockin_amplitude": "Set to 10uV",
+    "ST":   f"Fixed at {ST}v",
+    "SLB":  f"range from {SLB_gate_range[0]}v to {SLB_gate_range[-1]}v, {SLB_pts}pts",
+    "SRB":  f"range from {SRB_gate_range[0]}v to {SRB_gate_range[-1]}v, {SRB_pts}pts",
+    }
+
+monty.newrun("SLB SRB sweep", parameters)
+
+si.ST(ST)
+
+with tqdm(total=SRB_pts*SLB_pts) as pbar:
+    for (j, SLB_voltage) in enumerate(SLB_gate_range):
+        si.SLB(SLB_voltage)
+        time.sleep(0.05)
+        
+        for (i, SRB_voltage) in enumerate(SRB_gate_range):
+            si.SRB(SRB_voltage)
+            time.sleep(0.05)  # wait longer than the lockin integration time
+            
+            X[j, i] = lockin.X()
+            Y[j, i] = lockin.Y()
+            R[j, i] = lockin.R()
+            P[j, i] = lockin.P()
+            
+            pbar.update(1)
+            
+        # Save each ST sweep
+        monty.snapshot(data={"X": X, "Y": Y, "R": R, "P": P})
+
+monty.save({"X": X, "Y": Y, "R": R, "P": P})
+
+fig = plt.figure()
+plt.pcolor(SLB_gate_range, SRB_gate_range, R)
+plt.colorbar()
+plt.title(monty.runname + f" ST={ST}v")
+plt.xlabel("SLB gate voltage")
+plt.ylabel("SRB gate voltage")
+monty.savefig(plt, "matrix")
