@@ -105,8 +105,8 @@ monty = monty.loadexperiment()
 ST_pts = 101  # num points to sweep over ST
 SLB_pts = 101
 
-ST_gate_range = np.linspace(3.4, 3.6, ST_pts)
-SLB_gate_range = np.linspace(0.8, 1.0, SLB_pts)
+ST_gate_range = np.linspace(3.45, 3.55, ST_pts)
+SLB_gate_range = np.linspace(0.9, 1.0, SLB_pts)
 
 X = np.zeros((SLB_pts, ST_pts))
 Y = np.zeros((SLB_pts, ST_pts))
@@ -114,13 +114,13 @@ R = np.zeros((SLB_pts, ST_pts))
 P = np.zeros((SLB_pts, ST_pts))
 
 parameters = {
-    "desc": "Attempt to find where the double dot is",
+    "desc": "Zooming in on a region that has a double dot",
     "ST":   f"range from {ST_gate_range[0]}v to {ST_gate_range[-1]}v, {ST_pts}pts",
     "SLB":  f"{SLB_gate_range[0]}v to {SLB_gate_range[-1]}v, {SLB_pts}pts",
     "SRB":  f"{SLB_gate_range[0]}v to {SLB_gate_range[-1]}v, {SLB_pts}pts (paried with SLB)",
     }
 
-monty.newrun("initial sweep", parameters)
+monty.newrun("higher res", parameters)
 
 with tqdm(total=ST_pts*SLB_pts) as pbar:
     for (j, SLB_SRB_voltage) in enumerate(SLB_gate_range):
