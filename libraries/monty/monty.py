@@ -126,12 +126,12 @@ class Monty:
         self._save_data(path, self.runname + "_SNAPSHOT")
         self._save_experiment()
 
-    def savefig(self, plt, desc: str):
+    def savefig(self, plt, desc: str, dpi=1000):
         """Save the given plot as a png."""
         fname = self.runname + "_" + desc
         self.figures.append(fname + ".png")
         path = self._find_unused_filename(os.path.join(self.root, fname), "png")
-        plt.savefig(path)
+        plt.savefig(path, bbox_inches="tight", dpi=dpi)
         self._save_experiment()
 
     def newrun(self, name: str, parameters: dict):

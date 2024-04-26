@@ -96,6 +96,7 @@ experiment = {
 monty = Monty("SET.coulomb blocking", experiment)
 
 # optionally load the experiment here now
+monty = monty.loadexperiment()
 
 #%%
 
@@ -104,8 +105,8 @@ monty = Monty("SET.coulomb blocking", experiment)
 ST_pts = 101  # num points to sweep over ST
 SLB_pts = 101
 
-ST_gate_range = np.linspace(3.4, 3.5, ST_pts)
-SLB_gate_range = np.linspace(0.877, 0.888, SLB_pts)
+ST_gate_range = np.linspace(3.4, 3.6, ST_pts)
+SLB_gate_range = np.linspace(0.8, 1.0, SLB_pts)
 
 X = np.zeros((SLB_pts, ST_pts))
 Y = np.zeros((SLB_pts, ST_pts))
@@ -113,7 +114,7 @@ R = np.zeros((SLB_pts, ST_pts))
 P = np.zeros((SLB_pts, ST_pts))
 
 parameters = {
-    "desc": "Sweep over the active range of ST/SLB/SRB. Ranges chosen from quick_square. Attempt to recreate part of double_dot_region_matrix_view.png",
+    "desc": "Attempt to find where the double dot is",
     "ST":   f"range from {ST_gate_range[0]}v to {ST_gate_range[-1]}v, {ST_pts}pts",
     "SLB":  f"{SLB_gate_range[0]}v to {SLB_gate_range[-1]}v, {SLB_pts}pts",
     "SRB":  f"{SLB_gate_range[0]}v to {SLB_gate_range[-1]}v, {SLB_pts}pts (paried with SLB)",
@@ -143,11 +144,60 @@ with tqdm(total=ST_pts*SLB_pts) as pbar:
 
 monty.save({"X": X, "Y": Y, "R": R, "P": P})
 
+fig = plt.figure()
 plt.pcolor(ST_gate_range, SLB_gate_range, R)
 plt.colorbar()
+plt.title(monty.runname)
 plt.xlabel("ST gate voltage")
 plt.ylabel("SLB/SRB gate voltage")
 monty.savefig(plt, "matrix")
 
+#%%
+
+# 1D sweep. Just to see if the peaks are actually still there
+
+pts = 400
+
+gate_range = np.linspace(2.5, 4.0, pts)
+
+X = np.zeros((pts))
+Y = np.zeros((pts))
+R = np.zeros((pts))
+P = np.zeros((pts))
+
+v = 1.6
+
+parameters = {
+    "desc": "Quick 1D scan to see if there is any coulomb blocking at all.",
+    "ST":   f"range from {gate_range[0]}v to {gate_range[-1]}v, {pts}pts",
+    "SLB":  "1.0v",
+    "SRB":  "1.0v",
+    }
+
+monty.newrun("single 1D scan", parameters)
+
+si.SLB(1.0)
+si.SRB(1.0)
+
+with tqdm(total=pts) as pbar:
+    for (j, ST_voltage) in enumerate(gate_range):
+        si.ST(ST_voltage)
+        time.sleep(0.05)  # wait longer than the lockin integration time
+        
+        X[j] = lockin.X()
+        Y[j] = lockin.Y()
+        R[j] = lockin.R()
+        P[j] = lockin.P()
+        
+        pbar.update(1)
+
+monty.save({"X": X, "Y": Y, "R": R, "P": P})
 
 
+fig = plt.figure()
+plt.plot(gate_range, R)
+
+plt.xlabel("ST gate voltage")
+plt.title(monty.runname)
+plt.ylabel("Current (R)")
+monty.savefig(plt, "1D")
