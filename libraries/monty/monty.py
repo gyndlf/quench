@@ -14,9 +14,10 @@ from datetime import datetime
 import yaml
 
 if os.name == "posix":  # mac or linux
+    print("Warning running on posix... what are you doing??")
     DATA_DIR = "data/"
 else:  # Windows (Probably LD fridge)
-    DATA_DIR = "C:\\Users\\LD2007\\Documents\\Si_CMOS_james\\measurements\\data"
+    DATA_DIR = "C:\\Users\\LD2007\\Documents\\Si_CMOS_james\\data"
 VERSION = 1.2
 
 RESERVED_KEYWORDS = ["version", "identifier", "experiment"]
@@ -140,12 +141,15 @@ class Monty:
             print("WARNING: Finishing existing run to start a new one")
             self.finishrun()
 
-        if name in self.runs.keys() or name in RESERVED_KEYWORDS:
-            raise ValueError(f"ERROR: Cannot create new run with name '{name}'. Run already exists")
+        name_adj = name  # adjust with numbers for repeating runs
+        i = 1
+        while name_adj in self.runs.keys() or name_adj in RESERVED_KEYWORDS:
+            name_adj = name + str(i)
+            i += 1
             
         self.isrunrunning = True
         self.runid += 1
-        self.runname = name
+        self.runname = name_adj
         self.start_time = datetime.now()
         self.parameters = parameters
         self.figures = []
