@@ -10,7 +10,6 @@ Created on Fri Apr 26 10:53:31 2024
 from quench.libraries import broom
 broom.sweep()
 
-import sys
 import numpy as np
 from tqdm import tqdm
 import time
@@ -151,52 +150,4 @@ plt.ylabel("SLB/SRB gate voltage")
 monty.savefig(plt, "matrix")
 
 
-
-
-
-#%%
-
-# 1D sweep.
-
-ST_pts = 101  # num points to sweep over ST
-
-
-ST_gate_range = np.linspace(3.4, 3.6, ST_pts)
-
-X = np.zeros(ST_pts)
-Y = np.zeros(ST_pts)
-R = np.zeros(ST_pts)
-P = np.zeros(ST_pts)
-
-parameters = {
-    "desc": "1D scan",
-    "ST":   f"range from 3.4v to 3.6v, {ST_pts}pts",
-    "SLB":  f"0.885v",
-    "SRB":  f"0.885",
-    }
-
-#monty.newrun("1d sweep 0.885v", parameters)
-
-si.SLB(0.885)
-si.SRB(0.885)
-
-with tqdm(total=ST_pts) as pbar:
-    for (j, ST_voltage) in enumerate(ST_gate_range):
-        si.ST(ST_voltage)
-        time.sleep(0.05)  # wait longer than the lockin integration time
-        
-        X[j] = lockin.X()
-        Y[j] = lockin.Y()
-        R[j] = lockin.R()
-        P[j] = lockin.P()
-        
-        pbar.update(1)
-            
-monty.save({"X": X, "Y": Y, "R": R, "P": P})
-
-plt.plot(ST_gate_range, R)
-#plt.colorbar()
-plt.xlabel("ST gate voltage")
-plt.ylabel("R current")
-monty.savefig(plt, "line_plot")
 
