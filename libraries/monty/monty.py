@@ -15,7 +15,7 @@ import yaml
 
 if os.name == "posix":  # mac or linux
     print("Warning running on posix... what are you doing??")
-    DATA_DIR = "data/"
+    DATA_DIR = "/mnt/c/Users/LD2007/Documents/Si_CMOS_james/measurements/data"
 else:  # Windows (Probably LD fridge)
     DATA_DIR = "C:\\Users\\LD2007\\Documents\\Si_CMOS_james\\data"
 VERSION = 1.2
