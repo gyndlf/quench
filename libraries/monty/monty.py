@@ -144,7 +144,7 @@ class Monty:
         name_adj = name  # adjust with numbers for repeating runs
         i = 1
         while name_adj in self.runs.keys() or name_adj in RESERVED_KEYWORDS:
-            name_adj = name + str(i)
+            name_adj = name + "." + str(i)
             i += 1
             
         self.isrunrunning = True
