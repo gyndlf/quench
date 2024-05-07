@@ -1,2 +1,5 @@
 __pycache__/
 laboneq_output/
+Pulse_Sheets/
+*.log
+.ipynb_checkpoints/

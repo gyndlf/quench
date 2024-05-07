@@ -211,6 +211,8 @@ def output_checker_all():
         print('### MICROD GATES ###')
         output_checker(gate)
 
+#%%
+
 def connect_APBCLK_to_mdac():
     print('Disconnecting OPX')
     rfswitch.all(2)
@@ -305,10 +307,10 @@ def connect_to_gb():
     
     add_device_to_scfg(scfg, gb_raw)
     
-    import importlib
-    import gb_spyder as gb_mod
-    gb_mod = importlib.reload(gb_mod)
-    Gooseberry = gb_mod.Gooseberry
+    #import importlib
+    #import gb_spyder as gb_mod
+    #gb_mod = importlib.reload(gb_mod)
+    #Gooseberry = gb_mod.Gooseberry
     
     gb_control_si = Gooseberry(gb_raw)
 
@@ -319,8 +321,8 @@ def connect_to_gb():
 exp_name = 'OC21_cooldown'
 sample_name = 'OC21'
 
-exp = load_or_create_experiment(exp_name, sample_name)
-print('Experiment loaded. Last counter no:', exp.last_counter)
+#exp = load_or_create_experiment(exp_name, sample_name)
+#print('Experiment loaded. Last counter no:', exp.last_counter)
 
 def add_device_to_scfg(scfg, device, mon_only=False):
     if not mon_only:

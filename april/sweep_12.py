@@ -205,11 +205,11 @@ monty.savefig(plt, "1D")
 
 ST = 3.5
 
-SRB_pts = 201  # num points to sweep over SRB
-SLB_pts = 201
+SRB_pts = 301  # num points to sweep over SRB
+SLB_pts = 301
 
-SRB_gate_range = np.linspace(0.9, 1.0, SRB_pts)
-SLB_gate_range = np.linspace(0.9, 1.0, SLB_pts)
+SRB_gate_range = np.linspace(0.92, 0.96, SRB_pts)
+SLB_gate_range = np.linspace(0.92, 0.96, SLB_pts)
 
 X = np.zeros((SLB_pts, SRB_pts))
 Y = np.zeros((SLB_pts, SRB_pts))
@@ -217,7 +217,7 @@ R = np.zeros((SLB_pts, SRB_pts))
 P = np.zeros((SLB_pts, SRB_pts))
 
 parameters = {
-    "desc": "Change the source/drain bias and observe effects. Higher res version",
+    "desc": "Change the source/drain bias and observe effects. Zoomed in higher region",
     "lockin_amplitude": "Set to 10uV",
     "ST":   f"Fixed at {ST}v",
     "SLB":  f"range from {SLB_gate_range[0]}v to {SLB_gate_range[-1]}v, {SLB_pts}pts",
