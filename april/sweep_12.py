@@ -89,10 +89,10 @@ experiment = {
 }
 
 
-monty = Monty("SET.coulomb blocking", experiment)
+monty = Monty("SET.diamond", experiment)
 
 # optionally load the experiment here now
-monty = monty.loadexperiment()
+#monty = monty.loadexperiment()
 
 #%% 2D Sweep ST
 
@@ -161,7 +161,7 @@ Y = np.zeros((pts))
 R = np.zeros((pts))
 P = np.zeros((pts))
 
-v = 0.94
+v = 0.95
 
 parameters = {
     "desc": "Quick 1D scan to get some nice peaks",
