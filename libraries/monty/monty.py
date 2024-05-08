@@ -97,7 +97,7 @@ class Monty:
         repeat = 0
         while os.path.exists(newpath + "." + extension):  # Check if an existing file exists
             repeat += 1
-            newpath = path + str(repeat)
+            newpath = path + "." + str(repeat)
         return newpath + "." + extension
 
     def save(self, data=None):

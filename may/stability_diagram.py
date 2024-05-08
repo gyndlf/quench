@@ -124,8 +124,9 @@ monty.savefig(plt, "1D")
 #%% Plot point we choose for our ST
 
 # voltage of marker
-st = 3.527
-
+st = 3.526
+si.ST(st)  # reset to this point for future measurements
+ 
 inx = np.argmin(np.abs(gate_range - st))  # find corresponding point
 
 fig = plt.figure()
@@ -137,7 +138,7 @@ plt.title(monty.identifier + "." + monty.runname)
 plt.ylabel("Current (R)")
 plt.legend()
 
-monty.savefig(plt, "1D")
+#monty.savefig(plt, "1D")
 
 
 #%% Load electrons
@@ -146,12 +147,12 @@ dots.loaddots(si, high=1.0)
 
 #%% Flush electrons
 
-dots.flushdots(si, low=1.0, high=1.7)
+dots.flushdots(si, low=1.0, high=1.9)
 
 #%% 1D scan of P1
 
-pts = 400
-gate_range = np.linspace(1.68, 1.72, pts)
+pts = 800
+gate_range = np.linspace(1.85, 1.9, pts)[::-1]  # reverse order
 
 X = np.zeros((pts))
 Y = np.zeros((pts))
@@ -166,16 +167,20 @@ parameters = {
     "SRB":  f"Fixed at {si.SRB()}V",
     "SETB": f"Fixed at {si.SETB()}V",
     "J": f"Fixed at ? V",
-    "P1": f"Ranged from {gate_range[0]}V -> {gate_range[-1]}V in {pts} points",
+    "P1": f"Ranged from {gate_range[0]}V <- {gate_range[-1]}V in {pts} points",
     "P2": f"Fixed at {si.P2()}V",
     }
 
 monty.newrun("P1 scan", parameters)
 
+# Move to the start and wait a sec (for lockin to catchup)
+si.P1(gate_range[0])
+time.sleep(1.0)
+
 with tqdm(total=pts) as pbar:
     for (j, p1) in enumerate(gate_range):
         si.P1(p1)
-        time.sleep(0.05)  # wait longer than the lockin integration time
+        time.sleep(0.3)  # wait longer than the lockin integration time
         
         X[j] = lockin.X()
         Y[j] = lockin.Y()
@@ -193,14 +198,63 @@ plt.title(monty.identifier + "." + monty.runname)
 plt.ylabel("Current (R)")
 monty.savefig(plt, "1D")
 
+#%% 1D scan of P2
+
+pts = 400
+gate_range = np.linspace(1.68, 1.72, pts)
+
+X = np.zeros((pts))
+Y = np.zeros((pts))
+R = np.zeros((pts))
+P = np.zeros((pts))
+
+parameters = {
+    "desc": "1D sweep one dot P (without proportional feedback techniques)",
+    "lockin_amplitude": "Set to 10uV",
+    "ST":   f"Fixed at {si.ST()}V",
+    "SLB":  f"Fixed at {si.SLB()}V",
+    "SRB":  f"Fixed at {si.SRB()}V",
+    "SETB": f"Fixed at {si.SETB()}V",
+    "J": f"Fixed at ? V",
+    "P2": f"Ranged from {gate_range[0]}V -> {gate_range[-1]}V in {pts} points",
+    "P1": f"Fixed at {si.P1()}V",
+    }
+
+monty.newrun("P2 scan", parameters)
+
+# Move to the start and wait a sec (for lockin to catchup)
+si.P2(gate_range[0])
+time.sleep(0.5)
+
+with tqdm(total=pts) as pbar:
+    for (j, p2) in enumerate(gate_range):
+        si.P2(p2)
+        time.sleep(0.05)  # wait longer than the lockin integration time
+        
+        X[j] = lockin.X()
+        Y[j] = lockin.Y()
+        R[j] = lockin.R()
+        P[j] = lockin.P()
+        
+        pbar.update(1)
+
+monty.save({"X": X, "Y": Y, "R": R, "P": P})
+
+fig = plt.figure()
+plt.plot(gate_range, R)
+plt.xlabel("P2 gate voltage")
+plt.title(monty.identifier + "." + monty.runname)
+plt.ylabel("Current (R)")
+monty.savefig(plt, "1D")
+
 #%% P1 vs P2
 
 # Num of points to sweep over
 P1_pts = 30
 P2_pts = 30
 
-P1_range = np.linspace(1.68, 1.72, P1_pts)
-P2_range = np.linspace(1.68, 1.72, P2_pts)
+P1_range = np.linspace(1.69, 1.71, P1_pts)
+P2_range = np.linspace(1.69, 1.71, P2_pts)
 
 X = np.zeros((P1_pts, P2_pts))
 Y = np.zeros((P1_pts, P2_pts))
