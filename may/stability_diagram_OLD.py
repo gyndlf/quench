@@ -50,8 +50,8 @@ mdac = MDAC.MDAC('mdac', 'ASRL11::INSTR')
 lockin = scfg.load_instrument('sr860_top')
 
 # Create our custom MDAC mappings
-gb_control_si = connect_to_gb()
-si = newSiDot()
+gb_control_si = connect_to_gb(mdac)
+si = newSiDot(mdac)
 
 #%% Start Experiment
 
@@ -250,11 +250,11 @@ monty.savefig(plt, "1D")
 #%% P1 vs P2
 
 # Num of points to sweep over
-P1_pts = 30
-P2_pts = 30
+P1_pts = 200
+P2_pts = 200
 
-P1_range = np.linspace(1.69, 1.71, P1_pts)
-P2_range = np.linspace(1.69, 1.71, P2_pts)
+P1_range = np.linspace(1.8, 1.95, P1_pts)
+P2_range = np.linspace(1.8, 1.95, P2_pts)
 
 X = np.zeros((P1_pts, P2_pts))
 Y = np.zeros((P1_pts, P2_pts))
@@ -283,7 +283,7 @@ with tqdm(total=P1_pts*P2_pts) as pbar:
         
         for (i, p2) in enumerate(P2_range):
             si.P2(p2)
-            time.sleep(0.05)  # wait longer than the lockin integration time
+            time.sleep(0.1)  # wait longer than the lockin integration time
             
             X[j, i] = lockin.X()
             Y[j, i] = lockin.Y()
