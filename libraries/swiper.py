@@ -54,7 +54,7 @@ def plotsweep2d(X1: np.ndarray, X2: np.ndarray, Y: np.ndarray,
 
 def sweep1d(lockin: SR860,
             gate: Gate, low: float, high: float, points: int,
-            delay_time=0.1, plot=False, monty=None) -> dict:
+            delay_time=0.1, plot=True, monty=None) -> dict:
     """
     Perform a 1D sweep of the specified gate.
     
@@ -67,9 +67,15 @@ def sweep1d(lockin: SR860,
     Y = np.zeros((points))
     R = np.zeros((points))
     P = np.zeros((points))
+    
+    # Move to the start and wait a second for the lockin to catchup
+    gate(gate_range[0])
+    time.sleep(2.0)
+    
     with tqdm(total=points) as pbar:
         for (j, g) in enumerate(gate_range):
             gate(g)
+            #print(f"Set = {g}")
             time.sleep(delay_time)
             X[j] = lockin.X()
             Y[j] = lockin.Y()
@@ -85,7 +91,7 @@ def sweep1d(lockin: SR860,
 def sweep2d(lockin: SR860, 
             gate1: Gate, low1: float, high1: float, points1: int,
             gate2: Gate, low2: float, high2: float, points2: int,
-            callback=None, delay_time=0.1, plot=False, monty=None):
+            callback=None, delay_time=0.1, plot=True, monty=None):
     """
     Perform a 2D sweep between the specified gates.
     
@@ -101,6 +107,12 @@ def sweep2d(lockin: SR860,
     Y = np.zeros((points1, points2))
     R = np.zeros((points1, points2))
     P = np.zeros((points1, points2))
+    
+    # Move to the start and wait a second for the lockin to catchup
+    gate1(G1_range[0])
+    gate2(G2_range[0])
+    time.sleep(2.0)
+    
     with tqdm(total=points1*points2) as pbar:
         for (j, g1) in enumerate(G1_range):
             gate1(g1)
