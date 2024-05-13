@@ -4,7 +4,7 @@ Created on Fri May 10 15:23:43 2024
 
 Proportional based feedback. Keep a value fixed where desired
 
-@author: Zingel
+@author: jzingel
 """
 
 from qcodes_measurements.device.gate import Gate

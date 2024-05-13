@@ -4,7 +4,7 @@ Created on Fri May 10 15:50:31 2024
 
 Connect and run the experiment
 
-@author: Zingel
+@author: jzingel
 """
 
 # Inherited from stability_diagram_OLD.py

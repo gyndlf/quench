@@ -6,7 +6,7 @@ Create custom devices that are really just remappings of the MDAC and Gooseberry
 
 Use this file by importing it into your function or running it in the console.
 
-@author: J Zingel
+@author: jzingel
 """
 
 from quench.libraries import broom

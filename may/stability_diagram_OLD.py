@@ -8,7 +8,7 @@ Use proportional feedback to mitigate the SET bias produced by cross talk.
 
 Referenced initially from april/sweep_12.py
 
-@author: J Zingel
+@author: jzingel
 """
 
 from quench.libraries import broom

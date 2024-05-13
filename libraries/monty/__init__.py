@@ -4,7 +4,7 @@ Created on Tue Apr 16 10:55:21 2024.
 
 Monty library for saving and loading data quickly
 
-@author: Zingel
+@author: jzingel
 """
 
 from .monty import Monty

@@ -2,7 +2,7 @@
 """
 Created on Fri Apr 12 10:23:52 2024
 
-@author: LD2007
+@author: jzingel
 """
 
 # Import fundamental modules

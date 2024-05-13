@@ -2,7 +2,7 @@
 """
 Created on Mon May 13 10:19:51 2024
 
-@author: LD2007
+@author: jzingel
 """
 
 

@@ -4,7 +4,7 @@ Created on Fri Apr 26 10:48:41 2024
 
 Clean up the python path and allow import from the libraries dir easily.
 
-@author: Zingel
+@author: jzingel
 """
 
 def sweep(env="py312"):

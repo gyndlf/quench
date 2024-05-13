@@ -4,7 +4,7 @@ Created on Fri May 10 14:31:54 2024
 
 Quickly perform a 2D sweep between the specified gates
 
-@author: Zingel
+@author: jzingel
 """
 
 #from quench.libraries import broom

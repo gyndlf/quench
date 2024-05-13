@@ -2,7 +2,7 @@
 """
 Created on Wed Apr 17 15:12:01 2024.
 
-@author: Zingel
+@author: jzingel
 """
 
 # Sweep the Si CMOS SET to calibrate it

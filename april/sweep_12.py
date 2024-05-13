@@ -2,7 +2,7 @@
 """
 Created on Fri Apr 26 10:53:31 2024
 
-@author: Zingel
+@author: jzingel
 """
 
 # Sweep the SET using Python 3.12.2 and the new path structure

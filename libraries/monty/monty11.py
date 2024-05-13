@@ -4,7 +4,7 @@ Created on Fri Apr 12 14:04:24 2024
 
 Data saver using pickle and LZMA
 
-@author: Zingel
+@author: jzingel
 """
 
 import lzma

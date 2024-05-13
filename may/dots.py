@@ -6,7 +6,7 @@ Load electrons into the double dot.
 
 Use this file by importing it into your function or running it in the console.
 
-@author: J Zingel
+@author: jzingel
 """
 
 import time
