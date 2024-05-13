@@ -69,14 +69,13 @@ dots.output_checker_all(gb_control_si)
 dots.get_all_voltages(mdac)
 
 
-
 #%% 1D SET scan to see regime we are in
 
 # 1D sweep. Just to see if the peaks are actually still there
 
 
-low = 3.46
-high = 3.58
+low = 3.76
+high = 4.0
 pts = 400
 
 parameters = {
@@ -180,5 +179,53 @@ result = swiper.sweep2d(lockin,
 monty.save(result)
 
 
-#%% P1-P2 vs J
+#%% Sweep ST vs SLB/SRB 
+
+low = 1.8 
+high = 1.96
+pts = 20
+
+stlow = 3.75
+sthigh = 4.0
+stpts = 20
+
+parameters = {
+    "desc": "Sweep the SET over SLB and SRB to find a region that has good Coulomb blocking",
+    "ST":   f"Ranged from {stlow}V -> {sthigh}V in {stpts} points",
+    "SLB":  f"Ranged from {low}V -> {high}V in {pts} points",
+    "SRB":  f"Ranged from {low}V -> {high}V in {pts} points",
+    "SETB": f"Fixed at {si.SETB()}V",
+    "P1": f"Fixed at {si.P1()}",
+    "P2": f"Fixed at {si.P2()}",
+    }
+
+monty.newrun("st vs slb srb", parameters)
+
+result = swiper.sweep2d(lockin,
+                        [si.SLB, si.SRB], low, high, pts,
+                        si.ST, stlow, sthigh, stpts,
+                        monty=monty)
+
+monty.save(result)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
