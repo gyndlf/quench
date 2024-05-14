@@ -181,13 +181,13 @@ monty.save(result)
 
 #%% Sweep ST vs SLB/SRB 
 
-low = 1.8 
+low = 1.9
 high = 1.96
-pts = 20
+pts = 8
 
 stlow = 3.75
-sthigh = 4.0
-stpts = 20
+sthigh = 3.8
+stpts = 10
 
 parameters = {
     "desc": "Sweep the SET over SLB and SRB to find a region that has good Coulomb blocking",
@@ -204,7 +204,7 @@ monty.newrun("st vs slb srb", parameters)
 result = swiper.sweep2d(lockin,
                         [si.SLB, si.SRB], low, high, pts,
                         si.ST, stlow, sthigh, stpts,
-                        monty=monty)
+                        delay_time=0.3, monty=monty, alternate_directions=True)
 
 monty.save(result)
 

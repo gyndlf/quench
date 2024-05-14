@@ -40,12 +40,16 @@ def plotsweep1d(X: np.ndarray, Y: np.ndarray, gate_name: str, monty: Monty=None)
     
 def plotsweep2d(X1: np.ndarray, X2: np.ndarray, Y: np.ndarray, 
                 gate1_name: str, gate2_name: str, monty: Monty = None):
-    """Plot a 2D sweep"""
+    """
+    Plot a 2D sweep.
+    Assumes that X1 and X2 have the same shape (when meshed) as Y
+    """
     plt.figure()
-    plt.pcolor(X1, X2, Y)
+    # This may look backwards but it is the right order since I define my matrices weird
+    plt.pcolormesh(X2, X1, Y, shading="nearest")  
     plt.colorbar()
-    plt.xlabel(f"{gate1_name} gate voltage (V)")
-    plt.ylabel(f"{gate2_name} gate voltage (V)")
+    plt.ylabel(f"{gate1_name} gate voltage (V)")
+    plt.xlabel(f"{gate2_name} gate voltage (V)")
     if monty is not None:
         plt.title(monty.identifier + "." + monty.runname)
         monty.savefig(plt, "2D")
@@ -151,9 +155,9 @@ def waitforfeedback(gate: Gate, lockin: SR860, target: float, tol:float=1e-11, s
         print(f"Difference of {error} adjusting by {adjust}")
         g = gate() + adjust  # new gate voltage
         
-        if g > 3.87:
+        if g > 4.0:  # upper bound
             raise Exception(f"Aborting; correction voltage exceeds threshold, {g} > 4.0")
-        elif g < 3.83:
+        elif g < 3.5:  # lower bound
             raise Exception(f"Aborting; correction voltage fails to meet threshold, {g} < 1.0")
         else:
             print(f"Adjusting {gate.name} voltage to {g} V")
@@ -165,7 +169,7 @@ def waitforfeedback(gate: Gate, lockin: SR860, target: float, tol:float=1e-11, s
 def sweep2d(lockin: SR860, 
             gate1: Gate | list[Gate], low1: float, high1: float, points1: int,
             gate2: Gate, low2: float, high2: float, points2: int,
-            callback=None, delay_time=0.1, plot=True, monty=None, alternate_directions=True):
+            callback=None, delay_time=0.1, plot=True, monty=None, alternate_directions=False):
     """
     Perform a 2D sweep between the specified gates.
     
@@ -182,7 +186,7 @@ def sweep2d(lockin: SR860,
         print(f"Sweeping {gate1} from {low1}V to {high1}V in {points1} points,")
     print(f"Sweeping {gate2} from {low2}V to {high2}V in {points2} points")
     if alternate_directions:
-        print("Alternating directions after each 1D sweep (zig zag pathing)")
+        print("WARNING THIS IS FAILING: Alternating directions after each 1D sweep (zig zag pathing)")
     G1_range = np.linspace(low1, high1, points1)
     G2_range = np.linspace(low2, high2, points2)
     X = np.zeros((points1, points2))
@@ -220,7 +224,8 @@ def sweep2d(lockin: SR860,
                 pbar.update(1)
             
             if alternate_directions:  # sweep in a zig-zag path
-                G2_range = G2_range[::-1]
+                G2_range = G2_range[::-1]  # some how this doesn't work???? 
+                time.sleep(0.1)
                 
             # Save each sweep
             if callback is not None:
