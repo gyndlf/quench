@@ -162,7 +162,7 @@ def waitforfeedback(gate: Gate, lockin: SR860, target: float, tol:float=1e-11, s
         if np.abs(error) < tol:
             break  # early exiting
         
-        print(f"Difference of {error} adjusting by {adjust}")
+        #print(f"Difference of {error} adjusting by {adjust}")
         g = gate() + adjust  # new gate voltage
         
         if g > 4.0:  # upper bound
