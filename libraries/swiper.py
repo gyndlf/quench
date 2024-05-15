@@ -137,7 +137,7 @@ def sweep1dfeedback(lockin: SR860,
     return {"X": X, "Y": Y, "R": R, "P": P}
 
 
-def waitforfeedback(gate: Gate, lockin: SR860, target: float, tol:float=1e-11, stepsize=0.01, slope="down"):
+def waitforfeedback(gate: Gate, lockin: SR860, target: float, tol:float=1e-12, stepsize=0.001, slope="down"):
     """
     Proportionally change the gate voltage based on how far away we are until we are within threshold
     Wait until this occurs.
@@ -174,7 +174,7 @@ def waitforfeedback(gate: Gate, lockin: SR860, target: float, tol:float=1e-11, s
         else:
             #print(f"Adjusting {gate.name} voltage to {g} V")
             gate(g)
-            time.sleep(0.5)
+            time.sleep(0.15)  # delay after changing ST
             
 
 

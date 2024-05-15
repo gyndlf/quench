@@ -187,7 +187,7 @@ length = 60*5   # time to run for (seconds)
 # Setup P1 sweep parameters
 low = 1.9
 high = 1.96
-pts = 100  # between low -> high. 1 point per second (so this controls sweep speed)
+pts = 50  # between low -> high. 1 point per second (so this controls sweep speed)
 
 parameters = {
     "desc": "Attempt to fix current (via changing ST) when sweeping over P1",
@@ -215,6 +215,7 @@ for i in tqdm(range(length)):
 
 
 #target = drifts[0]
+
 
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
