@@ -106,7 +106,8 @@ print(peaks)
 
 #%%
 
-peak = peaks[2]
+# choose the appropriate peak here
+peak = peaks[3]
 
 st_start = g_range[peak]
 fix_lockin = result['R'][peak]  # current value to lock in at
@@ -134,11 +135,19 @@ lockin.R()
 
 #%% Choose target
 
-target = lockin.R()  # since we averaged before, can't trust it exactly
+target = fix_lockin  
 #tol = 0.04e-10
 tol = 0.01e-10
 
-swiper.waitforfeedback(si.ST, lockin, target, tol=tol)
+#swiper.waitforfeedback(si.ST, lockin, target, tol=tol)
+print(f"Target = {target}")
+while np.abs(lockin.R()-target) > tol:
+    swiper.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
+    time.sleep(0.1)
+    print(lockin.R())
+
+print(f"Final ST = {si.ST()}")
+    
 
 #%% Watch the drift (no action)
 
@@ -191,9 +200,11 @@ pts = 50  # between low -> high. 1 point per second (so this controls sweep spee
 
 parameters = {
     "desc": "Attempt to fix current (via changing ST) when sweeping over P1",
-    "feedback": "with feedback",
+    "feedback": "with feedback (one step version)",
     "P1": f"Sweeping from {low} to {high} over {pts} points. 1 point per second",
-    "tol": f"tolerance of {tol}"
+    "tol": f"tolerance of {tol}",
+    "target": f"{target}",
+    "stepsize": 0.005
     }
 
 monty.newrun("fix ST with P1 sweep", parameters)
@@ -211,11 +222,11 @@ for i in tqdm(range(length)):
     
     drifts[i] = lockin.R()
 
-    swiper.waitforfeedback(si.ST, lockin, target, tol=tol, stepsize=0.001, slope="down")
+    # swiper.waitforfeedback(si.ST, lockin, target, tol=tol, stepsize=0.001, slope="down")
+    swiper.feedback(si.ST, lockin, target, stepsize=0.005, slope="down")
 
 
 #target = drifts[0]
-
 
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
@@ -223,11 +234,60 @@ ax2 = ax1.twinx()
 ax2.plot(sweep[np.arange(0, length) % (2*pts)], color="pink")
 
 ax1.plot(drifts[1:])
-ax1.plot([0, length], [target-tol, target-tol], color="orange")
+#ax1.plot([0, length], [target-tol, target-tol], color="orange")
 ax1.plot([0, length], [target, target], color="green")
-ax1.plot([0, length], [target+tol, target+tol], color="orange")
+#ax1.plot([0, length], [target+tol, target+tol], color="orange")
 
 ax1.set_xlabel("Time (seconds)")
+ax1.set_ylabel("Lockin")
+ax2.set_ylabel("P1 (V)", color="pink")
+plt.title(monty.identifier + "." + monty.runname)   
+monty.savefig(plt, "history") 
+    
+monty.save(drifts)
+
+#%% Remain fixed with fast sweeping
+
+# Position ST to match the target FIRST
+
+length = 60*5   # num points of P1 to sample
+
+# Setup P1 sweep parameters
+low = 1.9
+high = 1.96
+pts = 50  # between low -> high. 1 point per second (so this controls sweep speed)
+
+stepsize = 0.001
+
+parameters = {
+    "desc": "Keep lockin fixed when sweeping over P1 quickly",
+    "feedback": "with feedback (one step version)",
+    "P1": f"Sweeping from {low} to {high} over {pts} points.",
+    "tol": f"initial tolerance of {tol}",
+    "target": f"{target}",
+    "stepsize": stepsize
+    }
+
+monty.newrun("fast P1 sweep with feedback", parameters)
+
+sweep = np.append(np.linspace(low, high, pts), np.linspace(high, low, pts))
+
+si.P1(low)  # Reset to the start and wait for integration times
+time.sleep(10)
+
+drifts = np.zeros(length)
+for i in tqdm(range(length)):
+    si.P1(sweep[i % (2*pts)])  # sweep P1
+    time.sleep(0.1)
+    drifts[i] = lockin.R()
+    swiper.feedback(si.ST, lockin, target, stepsize=stepsize, slope="down")
+
+fig, ax1 = plt.subplots()
+ax2 = ax1.twinx()
+ax2.plot(sweep[np.arange(0, length) % (2*pts)], color="pink")
+ax1.plot(drifts[1:])
+ax1.plot([0, length], [target, target], color="green")
+ax1.set_xlabel("P1")
 ax1.set_ylabel("Lockin")
 ax2.set_ylabel("P1 (V)", color="pink")
 plt.title(monty.identifier + "." + monty.runname)   
