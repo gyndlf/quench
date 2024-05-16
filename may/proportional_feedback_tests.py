@@ -257,11 +257,11 @@ low = 1.9
 high = 1.96
 pts = 50  # between low -> high. 1 point per second (so this controls sweep speed)
 
-stepsize = 0.001
+stepsize = 0.004
 
 parameters = {
     "desc": "Keep lockin fixed when sweeping over P1 quickly",
-    "feedback": "with feedback (one step version)",
+    "feedback": "with NO feedback (one step version)",
     "P1": f"Sweeping from {low} to {high} over {pts} points.",
     "tol": f"initial tolerance of {tol}",
     "target": f"{target}",

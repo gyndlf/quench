@@ -157,7 +157,7 @@ def waitforfeedback(gate: Gate, lockin: SR860, target: float, tol:float=1e-12, s
         r = lockin.R()
         
         error = (target - r) * sgn
-        adjust = error/target*stepsize  # normalised error func
+        adjust = error*stepsize/target # normalised error func
     
         if np.abs(error) < tol:
             break  # early exiting
