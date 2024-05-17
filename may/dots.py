@@ -116,3 +116,38 @@ def get_all_voltages(mdac):
     print("VICL:       ", mdac.ch05.voltage(), 'V')
     print("VLFG:       ", mdac.ch07.voltage(), 'V')
     print("VHFG:       ", mdac.ch10.voltage(), 'V')
+
+
+def getvoltages(mdac) -> dict:
+    """Get all the MDAC voltages in a sane format."""
+    return {
+        "LCB": mdac.ch03.voltage(),
+        "RCB": mdac.ch08.voltage(),
+        "RG": mdac.ch11.voltage(),
+        "ResB": mdac.ch14.voltage(),
+        "P3": mdac.ch16.voltage(),
+        "P2": mdac.ch19.voltage(),
+        "P1": mdac.ch20.voltage(),
+        "SETB": mdac.ch22.voltage(),
+        "SRB": mdac.ch26.voltage(),
+        "SLB": mdac.ch31.voltage(),
+        "ST": mdac.ch41.voltage(),
+        "bias": mdac.ch47.voltage(),
+        "VSS1P8": mdac.ch02.voltage(),
+        "VSS1P0": mdac.ch36.voltage(),
+        "VDD1P8": mdac.ch34.voltage(),
+        "VDD1P0": mdac.ch32.voltage(),
+        "VDD1P8_ANA": mdac.ch29.voltage(),
+        "BGN1P0": mdac.ch24.voltage(),
+        "BGN1P8": mdac.ch45.voltage(),
+        "BGP1P0": mdac.ch46.voltage(),
+        "BGP1P8": mdac.ch39.voltage(),
+        "RST": mdac.ch15.voltage(),
+        "MOSI": mdac.ch04.voltage(),
+        "SCLK": mdac.ch13.voltage(),
+        "SS_N": mdac.ch09.voltage(),
+        "APBCLK": mdac.ch06.voltage(),
+        "VICL": mdac.ch05.voltage(),
+        "VLFG": mdac.ch07.voltage(),
+        "VHFG": mdac.ch10.voltage(),
+    }
