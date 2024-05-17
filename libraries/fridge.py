@@ -8,12 +8,9 @@ Record fridge temperatures and pressures using the API
 """
 
 import requests
-from functools import partial
-from qcodes import Instrument
 
 # To find these API endpoints just open up the network analyser on the thermometry site
 API_URL = "https://qphys1114.research.ext.sydney.edu.au/therm_flask/"
-
 
 class Fridge():
     """Connect to the Thermometry API and get the fridge temperatures and pressures"""

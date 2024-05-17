@@ -23,8 +23,8 @@ from fridge import Fridge
 import MDAC
 
 # Import the neighbouring files. In may/
-import quench.may.dots as dots
-from quench.may.custom_devices import connect_to_gb, newSiDot
+import may.dots as dots
+from may.custom_devices import connect_to_gb, newSiDot
 
 # %% Connect to instruments
 
@@ -65,7 +65,7 @@ monty = Monty("SET.natural drift", experiment)
 
 #%% Watch the drift
 
-length = 10  # minutes
+length = 60 * 24 * 2  # minutes
 
 parameters = {
     "desc": "Watch the SET drift over the weekend",

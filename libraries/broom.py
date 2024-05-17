@@ -21,6 +21,8 @@ def sweep(env="py312"):
         f'C:\\Users\\LD2007\\anaconda3\\envs\\{env}\\lib\\site-packages\\win32',
         f'C:\\Users\\LD2007\\anaconda3\\envs\\{env}\\lib\\site-packages\\win32\\lib',
         f'C:\\Users\\LD2007\\anaconda3\\envs\\{env}\\lib\\site-packages\\Pythonwin',
-        '/Users/LD2007/Documents/Si_CMOS_james/quench/libraries']
+        '/Users/LD2007/Documents/Si_CMOS_james/quench/libraries',
+        '/Users/LD2007/Documents/Si_CMOS_james/quench',
+        ]
     
-    print("Cleaned PYTHONPATH and added 'quench/libraries' for easy importing.")
+    print("Cleaned PYTHONPATH and added quench/ and quench/libraries for easy importing.")
