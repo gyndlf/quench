@@ -3,3 +3,4 @@ laboneq_output/
 Pulse_Sheets/
 *.log
 .ipynb_checkpoints/
+.idea/
