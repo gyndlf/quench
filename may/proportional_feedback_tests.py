@@ -257,20 +257,20 @@ low = 1.9
 high = 1.96
 pts = 50  # between low -> high. 1 point per second (so this controls sweep speed)
 
-stepsize = 0.004
-
 parameters = {
     "desc": "Keep lockin fixed when sweeping over P1 quickly",
-    "feedback": "with NO feedback (one step version)",
+    "feedback": "with two feedbacks (one step version)",
     "P1": f"Sweeping from {low} to {high} over {pts} points.",
     "tol": f"initial tolerance of {tol}",
     "target": f"{target}",
-    "stepsize": stepsize
+    "stepsize": "0.004 then 0.001"
     }
 
 monty.newrun("fast P1 sweep with feedback", parameters)
 
 sweep = np.append(np.linspace(low, high, pts), np.linspace(high, low, pts))
+
+errors = np.zeros(length)  # store the errors
 
 si.P1(low)  # Reset to the start and wait for integration times
 time.sleep(10)
@@ -280,16 +280,22 @@ for i in tqdm(range(length)):
     si.P1(sweep[i % (2*pts)])  # sweep P1
     time.sleep(0.1)
     drifts[i] = lockin.R()
-    swiper.feedback(si.ST, lockin, target, stepsize=stepsize, slope="down")
+    errors[i] = (target - lockin.R()) * -1/target  # -1 since this is a downward slope
+    swiper.feedback(si.ST, lockin, target, stepsize=0.004, slope="down")
+    
+    # Also do a second feedback step
+    time.sleep(0.1)
+    swiper.feedback(si.ST, lockin, target, stepsize=0.0001, slope="down")
 
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
-ax2.plot(sweep[np.arange(0, length) % (2*pts)], color="pink")
-ax1.plot(drifts[1:])
+#ax2.plot(sweep[np.arange(0, length) % (2*pts)], color="pink")
+ax2.plot(errors, color="orange")
+ax1.plot(drifts) #[1:])
 ax1.plot([0, length], [target, target], color="green")
 ax1.set_xlabel("P1")
 ax1.set_ylabel("Lockin")
-ax2.set_ylabel("P1 (V)", color="pink")
+ax2.set_ylabel("Error", color="orange")
 plt.title(monty.identifier + "." + monty.runname)   
 monty.savefig(plt, "history") 
     
