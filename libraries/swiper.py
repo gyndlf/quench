@@ -20,7 +20,7 @@ from tqdm import tqdm
 import time
 import matplotlib.pyplot as plt
 
-
+from feedback import waitforfeedback, feedback  # for legacy imports
 
 # Based upon may.stability_diagram.py
 
@@ -137,80 +137,7 @@ def sweep1dfeedback(lockin: SR860,
     return {"X": X, "Y": Y, "R": R, "P": P}
 
 
-def waitforfeedback(gate: Gate, lockin: SR860, target: float, tol:float=1e-12, stepsize=0.001, slope="down"):
-    """
-    Proportionally change the gate voltage based on how far away we are until we are within threshold
-    Wait until this occurs.
-    
-    Slope = "up" or "down". Indicates the direction of the Coulomb potential that we're locked onto and directs which direction the feedback should operate in.
-    """
-    
-    if slope == "up":
-        sgn = 1
-    elif slope == "down":
-        sgn = -1
-    else:
-        raise(f"Unknown slope '{slope}'. Must be either 'up' or 'down'")
-    
-    waiting = np.abs(lockin.R() - target) > tol
-    while waiting:
-        r = lockin.R()
-        
-        error = (target - r) * sgn
-        adjust = error*stepsize/target # normalised error func
-    
-        if np.abs(error) < tol:
-            break  # early exiting
-        
-        #print(f"Difference of {error} adjusting by {adjust}")
-        g = gate() + adjust  # new gate voltage
-        
-        if g > 4.0:  # upper bound
-            print(f"Aborting feedback: correction voltage exceeds threshold, {g} > 4.0. No change to ST.")
-            break
-        elif g < 3.5:  # lower bound
-            print(f"Aborting feedback: correction voltage fails to meet threshold, {g} < 3.5. No change to ST.")
-            break
-        else:
-            #print(f"Adjusting {gate.name} voltage to {g} V")
-            gate(g)
-            time.sleep(0.15)  # delay after changing ST
-            
-def feedback(gate: Gate, lockin: SR860, target: float, stepsize=0.001, slope="down"):
-    """
-    Apply proportional based feedback always.
-    This will result in some jumping around near the target but should hopefully not be too much.
-
-    Parameters
-    ----------
-    target : float
-        lockin.R value to match
-    stepsize : TYPE, optional
-        How large a step should be taken in the direction of the error. The default is 0.001.
-    slope : TYPE, optional
-        Indicates the direction of the Coulomb potential that we're locked onto and directs which direction the feedback should operate in. Either "up" or "down". The default is "down".
-    """
-    if slope == "up":
-        sgn = 1
-    elif slope == "down":
-        sgn = -1
-    else:
-        raise(f"Unknown slope '{slope}'. Must be either 'up' or 'down'")
-    
-    r = lockin.R()
-    error = (target - r) * sgn
-    adjust = error/target*stepsize  # normalised error func
-    g = gate() + adjust  # new gate voltage
-    
-    if g > 4.0:  # upper bound
-        print(f"Aborting feedback: correction voltage exceeds threshold, {g} > 4.0. No change to ST.")
-    elif g < 3.5:  # lower bound
-        print(f"Aborting feedback: correction voltage fails to meet threshold, {g} < 3.5. No change to ST.")
-    else:
-        gate(g)
-
-
-def sweep2d(lockin: SR860, 
+def sweep2d(lockin: SR860,
             gate1: Gate | list[Gate], low1: float, high1: float, points1: int,
             gate2: Gate, low2: float, high2: float, points2: int,
             callback=None, delay_time=0.1, plot=True, monty=None, alternate_directions=False):
