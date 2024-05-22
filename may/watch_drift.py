@@ -8,7 +8,6 @@ Watch the natural drift of the fridge. From this we can determine how much tempe
 """
 
 from quench.libraries import broom
-
 broom.sweep()
 
 import numpy as np
