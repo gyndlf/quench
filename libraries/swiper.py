@@ -274,7 +274,8 @@ def sweep2d(lockin: SR860,
             # Save each sweep
             if callback is not None:
                 callback({"X": X, "Y": Y, "R": R, "P": P})
-                
+            
+    # TODO: Fails due to hysteresis
     if alternate_directions:  # fix saving as every second line is the wrong direction
         X[1::2, :] = X[1::2, ::-1]  # grab every second row and flip it
         Y[1::2, :] = Y[1::2, ::-1]

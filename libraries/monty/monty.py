@@ -222,4 +222,19 @@ class Monty:
         print("Note that no experimental data has been loaded.")
         print(f"Next run will have id {self.runid}")
         return self
+    
+    def loaddata(self, fname: str):
+        """Load a raw data file. Usually this is a SNAPSHOT file that didn't save properlly"""
+        path = os.path.join(self.root, fname + ".xz")
+        if not os.path.exists(path):
+            raise OSError(f"ERROR: File doesn't exist '{path}'")
+        print(f"Loading '{path}'")
+        with lzma.open(path, "r") as fz:
+            data = pickle.load(fz)
+            if data["version"] != VERSION:
+                print("WARNING: Saved object does not match current Monty version")
+            self.data = data["data"]
+            print(f"Loaded data with run name {data['runname']}")
+        return self.data
+        
 

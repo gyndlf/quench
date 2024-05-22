@@ -18,6 +18,7 @@ from tqdm import tqdm
 
 from qcodes import Station, Instrument
 
+import swiper
 from monty import Monty
 from fridge import Fridge
 import MDAC
@@ -60,7 +61,7 @@ experiment = {
 monty = Monty("SET.natural drift", experiment)
 
 # optionally load the experiment here now
-# monty = monty.loadexperiment()
+#monty = monty.loadexperiment()
 
 
 #%% Watch the drift
@@ -101,3 +102,61 @@ plt.title(monty.identifier + "." + monty.runname)
 monty.savefig(plt, "history")
 
 monty.save({"R": R, "temps": temps})
+
+#%% watch the drift but do some feedback
+
+
+length = 60 * 5 # minutes
+
+target = 1.6258974722e-10
+
+parameters = {
+    "desc": "Watch the SET drift but do feedback three times (0.04 -> 0.01 -> 0.01)",
+    "gates" : dots.getvoltages(mdac),
+    "duration": f"{length} minutes",
+    "target": target,
+    "tempsensor": "MC"
+}
+
+monty.newrun("with feedback", parameters)
+
+R = np.zeros(length)
+temps = np.zeros(length)
+
+for i in tqdm(range(length)):
+    R[i] = lockin.R()
+    temps[i] = fridge.get_temperatures()["MC"]
+    
+    # Do feedback now
+    swiper.feedback(si.ST, lockin, target, stepsize=0.004, slope="down")
+    time.sleep(1)
+    
+    swiper.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
+    
+    time.sleep(1)
+    
+    swiper.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
+    
+    time.sleep(60)
+
+    if i % 30 == 0:  # save every 1/2 hour
+        monty.snapshot({"R": R, "temps": temps})
+
+
+#%%
+
+tmax = 10
+
+fig, ax1 = plt.subplots()
+ax2 = ax1.twinx()
+
+ax1.plot(R[:tmax], ".", color="green")
+ax2.plot(temps[:tmax], color="blue")
+
+ax1.set_xlabel("Time (minutes)")
+ax1.set_ylabel("Lockin (A)", color="green")
+ax2.set_ylabel("MC Temp (K)", color="blue")
+plt.title(monty.identifier + "." + monty.runname)
+#monty.savefig(plt, "history")
+
+#monty.save({"R": R, "temps": temps})
