@@ -23,6 +23,7 @@ from monty import Monty
 import feedback
 import swiper
 import MDAC
+from fridge import Fridge
 
 # Import the neighbouring files. In may/
 import may.dots as dots
@@ -52,7 +53,7 @@ lockin = scfg.load_instrument('sr860_top')
 # Create our custom MDAC mappings
 gb_control_si = connect_to_gb(mdac)
 si = newSiDot(mdac)
-
+fridge = Fridge("BlueFors_LD")
 
 #%% Start Experiment
 
@@ -69,7 +70,7 @@ dots.get_all_voltages(mdac)
 
 # Get our surroundings
 
-low = 3.8
+low = 3.7
 high = 3.95
 pts = 300
 
@@ -110,7 +111,7 @@ print(peaks)
 #%% Find the best ST voltage to use
 
 # choose the appropriate peak here
-peak = peaks[3]
+peak = peaks[2]
 
 st_start = g_range[peak]
 fix_lockin = result['R'][peak]  # current value to lock in at
@@ -143,35 +144,59 @@ target = fix_lockin
 tol = 0.001e-10
 
 #swiper.waitforfeedback(si.ST, lockin, target, tol=tol)
-print(f"Target = {target}")
-while np.abs(lockin.R()-target) > tol:
-    feedback.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
-    time.sleep(0.1)
-    print(lockin.R())
 
-print(f"Final ST = {si.ST()}")
+def gettotarget():  # inherit global variables (bad!!!!)
+    print(f"Target = {target}")
+    while np.abs(lockin.R()-target) > tol:
+        feedback.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
+        time.sleep(0.1)
+        print(lockin.R())
+    
+    print(f"Final ST = {si.ST()}")
+    
+gettotarget()
 
 
 #%% Load electrons
 
-dots.loaddots(si, high=1.0)
+#dots.loaddots(si, high=1.2)
+
+thresh = 1.0
+
+tic = time.time()
+si.SETB(thresh)
+time.sleep(0.5)
+si.SETB(0)
+print(f"Done. Took {time.time()-tic} seconds.")
 
 #%% Flush electrons
 
-dots.flushdots(si, low=1.0, high=1.9)
+#dots.flushdots(si, low=1.0, high=1.9)
+
+low = 1.0
+high = 1.9
+
+tic = time.time()
+si.P1(low)
+si.P2(low)
+print(f"Flushed out to {low}V, raising to {high}V")
+time.sleep(0.5)
+si.P1(high)
+si.P2(high)
+print(f"Done. Took {time.time()-tic} seconds.")
 
 
 #%% 1D scan of P1
 
-low = 1.85
+low = 1.75
 high = 1.9
 points = 400
 gate = si.P1
 
 parameters = {
-    "desc": "1D sweep one dot (without proportional feedback techniques)",
+    "desc": "1D sweep of P1 (with proportional feedback techniques)",
     "lockin_amplitude": "Set to 10uV",
-    "ST":   f"Fixed at {si.ST()}V",
+    "ST":   f"Fixed at {si.ST()}V (target of {target} on lockin)",
     "SLB":  f"Fixed at {si.SLB()}V",
     "SRB":  f"Fixed at {si.SRB()}V",
     "SETB": f"Fixed at {si.SETB()}V",
@@ -194,10 +219,12 @@ P = np.zeros((points))
 # Move to the start and wait a second for the lockin to catchup
 gate(gate_range[0])
 time.sleep(2.0)
+gettotarget()  # get within tolerance now
 
 with tqdm(total=points) as pbar:
     for (j, g) in enumerate(gate_range):
         gate(g)
+        
         time.sleep(0.1)
         X[j] = lockin.X()
         Y[j] = lockin.Y()
@@ -206,7 +233,12 @@ with tqdm(total=points) as pbar:
         pbar.update(1)
         
         # apply feedback
+        feedback.feedback(si.ST, lockin, target, stepsize=0.004, slope="down")
+        time.sleep(0.1)
         feedback.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
+        time.sleep(0.1)
+        feedback.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
+        
         
 
 
@@ -217,12 +249,22 @@ monty.save({"X": X, "Y": Y, "R": R, "P": P})
 
 # Num of points to sweep over
 
-low = 1.8 
+low = 1.8
 high = 1.96
-pts = 200
+pts = 20  # n x n
+
+gate1 = si.P1
+gate2 = si.P2
+
+low1 = low
+low2 = low
+high1 = high
+high2 = high
+points1 = pts
+points2 = pts
 
 parameters = {
-    "desc": "See if we can see any charge stability lines without proportional feedback techniques.",
+    "desc": "Sweep both P1 and P2 with feedback present.",
     "lockin_amplitude": "Set to 10uV",
     "ST":   f"Fixed at {si.ST()}V",
     "SLB":  f"Fixed at {si.SLB()}V",
@@ -235,13 +277,55 @@ parameters = {
 
 monty.newrun("p1 vs p2", parameters)
 
-result = swiper.sweep2d(lockin,
-                        si.P1, low, high, pts,
-                        si.P2, low, high, pts,
-                        monty=monty)
+#result = swiper.sweep2d(lockin,
+#                        si.P1, low, high, pts,
+#                        si.P2, low, high, pts,
+#                        monty=monty)
 
-monty.save(result)
+G1_range = np.linspace(low1, high1, points1)
+G2_range = np.linspace(low2, high2, points2)
+X = np.zeros((points1, points2))
+Y = np.zeros((points1, points2))
+R = np.zeros((points1, points2))
+P = np.zeros((points1, points2))
 
+ST_drift = np.zeros(points1*points2)
+
+gate1(G1_range[0])
+gate2(G2_range[0])
+time.sleep(2.0)
+gettotarget()  # get within tolerance now
+time.sleep(0.1)
+
+with tqdm(total=points1*points2) as pbar:
+    for (j, g1) in enumerate(G1_range):
+        gate1(g1)
+        time.sleep(0.5)
+        gettotarget()  # get within tolerance now
+        time.sleep(0.1)
+        
+        for (i, g2) in enumerate(G2_range):
+            gate2(g2)
+            time.sleep(0.1)
+            
+            ST_drift[j*points1+i] = si.ST()
+            X[j, i] = lockin.X()
+            Y[j, i] = lockin.Y()
+            R[j, i] = lockin.R()
+            P[j, i] = lockin.P()
+            
+            pbar.update(1)
+            
+            # apply feedback
+            feedback.feedback(si.ST, lockin, target, stepsize=0.004, slope="down")
+            time.sleep(0.1)
+            feedback.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
+            time.sleep(0.1)
+            feedback.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
+        
+
+swiper.plotsweep2d(G1_range, G2_range, R, gate1.name, gate2.name, monty)
+monty.save({"X": X, "Y": Y, "R": R, "P": P})
 
 #%% Sweep ST vs SLB/SRB 
 
