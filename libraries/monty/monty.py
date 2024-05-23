@@ -49,7 +49,13 @@ class Monty:
         self.runname = ""
         self.start_time = datetime.min  # stand in
         self.parameters = {}  # run parameters (values sweeping, etc)
-        print(f"Started new experiment {self.identifier}")
+        
+        # Attempt to load the experiment if it already exists
+        if os.path.exists(os.path.join(DATA_DIR, identifier.replace(".", "/").replace(" ", "_"), "experiment.yaml")):
+            print("Loading existing experiment")
+            self.loadexperiment()
+        else:
+            print(f"Started new experiment {self.identifier}")
 
     def __repr__(self):
         """Display a current representation of monty."""
