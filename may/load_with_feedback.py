@@ -71,9 +71,9 @@ dots.get_all_voltages(mdac)
 
 # Get our surroundings
 
-low = 3.8
-high = 3.95
-pts = 300
+low = 3.85
+high = 3.875
+pts = 50
 
 parameters = {
     "desc": "Quick 1D scan of the SET over ST",
@@ -95,7 +95,7 @@ monty.save(result)
 g_range = np.linspace(low, high, pts)
 deriv = np.abs(np.diff(result["R"]))
 
-peaks, _ = find_peaks(deriv, distance=30)
+peaks, _ = find_peaks(deriv, distance=10)
 #peak = np.argmax(deriv)
 
 fig = plt.figure()
@@ -147,7 +147,7 @@ lockin.R()
 
 #%% Lock in on target
 
-target = fix_lockin  
+target = 1.55e-10 #fix_lockin  
 tol = 0.0001e-10
 
 #swiper.waitforfeedback(si.ST, lockin, target, tol=tol)
@@ -160,11 +160,12 @@ def gettotarget():  # inherit global variables (bad!!!!)
         #print(lockin.R())
     
     print(f"Final ST = {si.ST()}")
-    
+   
+#si.ST(st_start)
 gettotarget()
 
 
-#%% Fitted feedback
+#%% Fitted the polynominal
 
 # Choose region to fit to (automatically choose based on target choice)
 # assume `peak` is the correct peak and g_range is set well
@@ -209,7 +210,7 @@ plt.ylabel("Current")
 plt.legend()
 
 
-#%%
+#%% Fitted feedback function
 
 # feedback loop
 
@@ -220,23 +221,37 @@ def fittedfeedback():  # (inherit global variables. bad!!)
     Be aware there are no checks to make sure that we are still in a reasonable range of values...
     
     """
+    # time.sleep(0.5)
+    # if r == None:
     r = lockin.R()
     st = si.ST()
     
-    delta = (p(r)-p(target))*0.1  # voltage difference
-    g = st - delta
+    delta_g = (p(r)-p(target))  # voltage difference
+    g1 = st - delta_g
     
-    if g > 4.0:  # upper bound
+    delta_I1 = r-target
+    
+    # print (delta_g, g1, r-target, target)
+    
+    if g1 > 4.0:  # upper bound
         print(f"Aborting feedback: correction voltage exceeds threshold, {g} > 4.0. No change to ST.")
-        return
-    elif g < 3.5:  # lower bound
+        return delta_I1
+    elif g1 < 3.5:  # lower bound
         print(f"Aborting feedback: correction voltage fails to meet threshold, {g} < 3.5. No change to ST.")
-        return
+        return delta_I1
+    # elif np.abs(r-target) > 0.1*1e-10:
+    #     print ('Here comes the tunneling')
+    #     return delta_I1
+    elif np.abs(delta_g) > 0.0002:
+        print ('large shift')
+        si.ST(st - delta_g/2)
+        time.sleep(0.5)  # delay after changing ST
+        return delta_I1
     else:
         # print(f"Adjusting {gate.name} voltage to {g} V")
-        si.ST(g)
-        time.sleep(0.15)  # delay after changing ST
-
+        si.ST(st - delta_g)
+        time.sleep(0.5)  # delay after changing ST
+        return delta_I1
 
 fittedfeedback()
 
@@ -271,9 +286,9 @@ print(f"Done. Took {time.time()-tic} seconds.")
 
 #%% 1D scan of P1
 
-low = 1.75
-high = 1.9
-points = 400
+low = 0.8
+high = 2.4
+points = 800
 gate = si.P1
 
 parameters = {
@@ -299,17 +314,20 @@ Y = np.zeros((points))
 R = np.zeros((points))
 P = np.zeros((points))
 ST_drift = np.zeros(points)
+delta_I = np.zeros(points)
+
+fittedfeedback()
 
 # Move to the start and wait a second for the lockin to catchup
-gate(gate_range[0])
-time.sleep(2.0)
-gettotarget()  # get within tolerance now
+# gate(gate_range[0])
+# time.sleep(2.0)
+# gettotarget()  # get within tolerance now
 
 with tqdm(total=points) as pbar:
     for (j, g) in enumerate(gate_range):
         gate(g)
         
-        time.sleep(0.1)
+        time.sleep(0.5)
         ST_drift[j] = si.ST()
         X[j] = lockin.X()
         Y[j] = lockin.Y()
@@ -317,7 +335,9 @@ with tqdm(total=points) as pbar:
         P[j] = lockin.P()
         pbar.update(1)
         
-        fittedfeedback()
+        delta_I[j] = fittedfeedback()
+        # time.sleep(0.3)
+
         
         # apply feedback
         #feedback.feedback(si.ST, lockin, target, stepsize=0.004, slope="down")
@@ -330,17 +350,28 @@ with tqdm(total=points) as pbar:
 
 
 swiper.plotsweep1d(gate_range, R, gate.name, monty)
-monty.save({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift})
+monty.save({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift, 'ST_I': delta_I})
 
 # Plot ST history over time
 fig = plt.figure()
 plt.plot(ST_drift)
+# plt.plot(delta_I)
 plt.xlabel("Steps when sweeping P1")
 plt.title(monty.identifier + "." + monty.runname)
 plt.ylabel("ST voltage")
 plt.legend()
 monty.savefig(plt, "ST history")
 
+# %%
+# Plot ST history over time
+fig = plt.figure()
+# plt.plot(ST_drift)
+plt.plot(delta_I)
+# plt.xlabel("Steps when sweeping P1")
+# plt.title(monty.identifier + "." + monty.runname)
+# plt.ylabel("ST voltage")
+# plt.legend()
+# monty.savefig(plt, "ST history")
 #%% P1 vs P2
 
 # Num of points to sweep over
