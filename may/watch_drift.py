@@ -105,12 +105,12 @@ monty.save({"R": R, "temps": temps})
 #%% watch the drift but do some feedback
 
 
-length = 60 * 12 # minutes
+length = 60 * 10 # minutes
 
-target = 1.6258974722e-10
+#target = 1.6258974722e-10
 
 parameters = {
-    "desc": "Watch the SET drift but do feedback three times (0.04 -> 0.01 -> 0.01)",
+    "desc": "Watch the SET drift but do fitted feedback twice",
     "gates" : dots.getvoltages(mdac),
     "duration": f"{length} minutes",
     "target": target,
@@ -121,28 +121,28 @@ monty.newrun("with feedback", parameters)
 
 R = np.zeros(length)
 temps = np.zeros(length)
+ST_drift = np.zeros(length)
+
+gettotarget()  # inherits current console globals
+time.sleep(1)
+
 
 for i in tqdm(range(length)):
     R[i] = lockin.R()
     temps[i] = fridge.get_temperatures()["MC"]
+    ST_drift[i] = si.ST()
     
     # Do feedback now
-    swiper.feedback(si.ST, lockin, target, stepsize=0.004, slope="down")
+    #swiper.feedback(si.ST, lockin, target, stepsize=0.004, slope="down")
+    fittedfeedback()  # awful coding. Assumes that you have set this up in memory beforehand via load_with_feedback.py
     time.sleep(1)
-    
-    swiper.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
-    
-    time.sleep(1)
-    
-    swiper.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
+    fittedfeedback()
     
     time.sleep(60)
 
     if i % 30 == 0:  # save every 1/2 hour
-        monty.snapshot({"R": R, "temps": temps})
+        monty.snapshot({"R": R, "temps": temps, "ST": ST_drift})
 
-
-#%%
 
 tmax = length
 
@@ -158,4 +158,4 @@ ax2.set_ylabel("MC Temp (K)", color="blue")
 plt.title(monty.identifier + "." + monty.runname)
 monty.savefig(plt, "history")
 
-monty.save({"R": R, "temps": temps})
+monty.save({"R": R, "temps": temps, "ST": ST_drift})
