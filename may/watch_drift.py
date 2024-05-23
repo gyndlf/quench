@@ -105,7 +105,7 @@ monty.save({"R": R, "temps": temps})
 #%% watch the drift but do some feedback
 
 
-length = 60 * 5 # minutes
+length = 60 * 12 # minutes
 
 target = 1.6258974722e-10
 
@@ -144,7 +144,7 @@ for i in tqdm(range(length)):
 
 #%%
 
-tmax = 10
+tmax = length
 
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
@@ -156,6 +156,6 @@ ax1.set_xlabel("Time (minutes)")
 ax1.set_ylabel("Lockin (A)", color="green")
 ax2.set_ylabel("MC Temp (K)", color="blue")
 plt.title(monty.identifier + "." + monty.runname)
-#monty.savefig(plt, "history")
+monty.savefig(plt, "history")
 
-#monty.save({"R": R, "temps": temps})
+monty.save({"R": R, "temps": temps})
