@@ -134,7 +134,7 @@ class Monty:
 
     def savefig(self, plt, desc: str, dpi=1000):
         """Save the given plot as a png."""
-        fname = self.runname + "_" + desc
+        fname = self.runname + "_" + desc.replace(" ", "_")
         self.figures.append(fname + ".png")
         path = self._find_unused_filename(os.path.join(self.root, fname), "png")
         plt.savefig(path, bbox_inches="tight", dpi=dpi)
