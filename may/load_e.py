@@ -307,7 +307,7 @@ parameters = {
     "SLB":  f"Fixed at {si.SLB()}V",
     "SRB":  f"Fixed at {si.SRB()}V",
     "SETB": f"Fixed at {si.SETB()}V",
-    "J": f"Fixed at ? V",
+    "J1": f"Fixed at {gb_control_si.VICL()}V",
     "P1": f"Ranged from {low}V -> {high}V in {pts} points",
     "P2": f"Fixed at {si.P2()}V",
     }
@@ -399,7 +399,7 @@ parameters = {
     "SLB":  f"Fixed at {si.SLB()}V",
     "SRB":  f"Fixed at {si.SRB()}V",
     "SETB": f"Fixed at {si.SETB()}V",
-    "J": f"Fixed at ? V",
+    "J1": f"Fixed at {gb_control_si.VICL()}V",
     gateup.name: f"Ranged from {low}V -> {high}V in {pts} points",  # P1 or P2
     gatedown.name: f"Ranged from {high}V -> {low}V in {pts} points",  # P1 or P2
     }
@@ -469,7 +469,7 @@ monty.savefig(plt, "ST history")
 
 low = 1.5
 high = 2.0
-pts = 50  # n x n
+#pts = 10  # n x n
 
 gate1 = si.P1
 gate2 = si.P2
@@ -478,8 +478,8 @@ low1 = low
 low2 = low
 high1 = high
 high2 = high
-points1 = pts
-points2 = pts
+points1 = 400
+points2 = 200
 
 parameters = {
     "desc": "Sweep both P1 and P2 with feedback present.",
@@ -488,9 +488,9 @@ parameters = {
     "SLB":  f"Fixed at {si.SLB()}V",
     "SRB":  f"Fixed at {si.SRB()}V",
     "SETB": f"Fixed at {si.SETB()}V",
-    "J": f"Fixed at ? V",
-    "P1": f"Ranged from {low}V -> {high}V in {pts} points",
-    "P2": f"Ranged from {low}V -> {high}V in {pts} points",
+    "J1": f"Fixed at {gb_control_si.VICL()}V",
+    "P1": f"Ranged from {low}V -> {high}V in {points1} points",
+    "P2": f"Ranged from {low}V -> {high}V in {points2} points",
     }
 
 monty.newrun("p1 vs p2", parameters)
@@ -510,6 +510,8 @@ with tqdm(total=points1*points2) as pbar:
     for (j, g1) in enumerate(G1_range):
         gate1(g1)
         time.sleep(0.3)
+        fittedfeedback()
+        time.sleep(1)
         
         for (i, g2) in enumerate(G2_range):
             gate2(g2)
@@ -542,3 +544,23 @@ plt.ylabel("ST voltage")
 plt.legend()
 monty.savefig(plt, "ST history")
 
+
+# Split the 2D sweep into forwad and backward plots
+
+plt.figure()
+plt.pcolormesh(G2_range, G1_range[::2], R[::2, :], shading="nearest")  
+plt.colorbar()
+plt.ylabel(f"{gate1.name} voltage (V)")
+plt.xlabel(f"{gate2.name} voltage (V)")
+plt.title(monty.identifier + "." + monty.runname + "_forward")
+monty.savefig(plt, "2D")
+monty.savefig(plt, "stability forward")
+
+plt.figure()
+plt.pcolormesh(G2_range, G1_range[1::2], R[1::2, ::-1], shading="nearest")  
+plt.colorbar()
+plt.ylabel(f"{gate1.name} voltage (V)")
+plt.xlabel(f"{gate2.name} voltage (V)")
+plt.title(monty.identifier + "." + monty.runname + "_back")
+monty.savefig(plt, "2D")
+monty.savefig(plt, "stability backward")
