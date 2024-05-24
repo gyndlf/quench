@@ -2,8 +2,9 @@
 """
 Created on Wed May 22 11:22:34 2024
 
-Combine the previous files to load electrons into the dot and use feedback while doing so
+New version of load_with_feedback.py to remove many of my hacks
 
+Combine the previous files to load electrons into the dot and use feedback while doing so
 controller.py + proportional_feedback_tests.py
 
 @author: jzingel
@@ -72,9 +73,9 @@ dots.get_all_voltages(mdac)
 
 # Get our surroundings
 
-low = 3.85
-high = 3.875
-pts = 50
+low = 3.8
+high = 3.88
+pts = 200
 
 parameters = {
     "desc": "Quick 1D scan of the SET over ST",
@@ -95,8 +96,9 @@ monty.save(result)
 
 g_range = np.linspace(low, high, pts)
 deriv = np.abs(np.diff(result["R"]))
+R = result["R"]
 
-peaks, _ = find_peaks(deriv, distance=10)
+peaks, _ = find_peaks(deriv, height=2e-12, distance=10)
 #peak = np.argmax(deriv)
 
 fig = plt.figure()
@@ -108,12 +110,21 @@ plt.title(monty.identifier + "." + monty.runname)
 plt.ylabel("Current derivative")
 plt.legend()
 
+fig = plt.figure()
+plt.plot(g_range, R)
+plt.plot(g_range[peaks], R[peaks], "x")
+#plt.plot(g_range[peak], deriv[peak], "x")
+plt.xlabel("ST gate voltage")
+plt.title(monty.identifier + "." + monty.runname)
+plt.ylabel("Current current")
+plt.legend()
+
 print(peaks)
 
 #%% Find the best ST voltage to use
 
 # choose the appropriate peak here
-peak = peaks[2]
+peak = peaks[3]
 
 st_start = g_range[peak]
 fix_lockin = result['R'][peak]  # current value to lock in at
@@ -140,15 +151,15 @@ plt.legend()
 #%% Position ST to match our point
 
 # Position the ST to match the target
-si.ST(low)  # reset to bottom of the sweep 
-time.sleep(1)
+#si.ST(low)  # reset to bottom of the sweep 
+#time.sleep(1)
 si.ST(st_start)
-time.sleep(5)
+time.sleep(1)
 lockin.R()
 
 #%% Lock in on target
 
-target = 1.55e-10 #fix_lockin  
+target = fix_lockin  
 tol = 0.0001e-10
 
 #swiper.waitforfeedback(si.ST, lockin, target, tol=tol)
@@ -235,24 +246,21 @@ def fittedfeedback():  # (inherit global variables. bad!!)
     # print (delta_g, g1, r-target, target)
     
     if g1 > 4.0:  # upper bound
-        print(f"Aborting feedback: correction voltage exceeds threshold, {g} > 4.0. No change to ST.")
-        return delta_I1
+        print(f"Aborting feedback: correction voltage exceeds threshold, {g1} > 4.0. No change to ST.")
     elif g1 < 3.5:  # lower bound
-        print(f"Aborting feedback: correction voltage fails to meet threshold, {g} < 3.5. No change to ST.")
-        return delta_I1
+        print(f"Aborting feedback: correction voltage fails to meet threshold, {g1} < 3.5. No change to ST.")
     # elif np.abs(r-target) > 0.1*1e-10:
     #     print ('Here comes the tunneling')
     #     return delta_I1
-    elif np.abs(delta_g) > 0.0002:
-        print ('large shift')
+    elif np.abs(delta_g) > 0.0002:  # how to pick a good value consistently?
+        #print ('large shift')
         si.ST(st - delta_g/2)
         time.sleep(0.5)  # delay after changing ST
-        return delta_I1
     else:
         # print(f"Adjusting {gate.name} voltage to {g} V")
         si.ST(st - delta_g)
         time.sleep(0.5)  # delay after changing ST
-        return delta_I1
+    return delta_I1
 
 fittedfeedback()
 
@@ -287,8 +295,8 @@ print(f"Done. Took {time.time()-tic} seconds.")
 
 #%% 1D scan of P1
 
-low = 0.8
-high = 2.4
+low = 2.2
+high = 1.8
 points = 800
 gate = si.P1
 
@@ -300,7 +308,7 @@ parameters = {
     "SRB":  f"Fixed at {si.SRB()}V",
     "SETB": f"Fixed at {si.SETB()}V",
     "J": f"Fixed at ? V",
-    "P1": f"Ranged from {low}V <- {high}V in {pts} points",
+    "P1": f"Ranged from {low}V -> {high}V in {pts} points",
     "P2": f"Fixed at {si.P2()}V",
     }
 
@@ -373,13 +381,95 @@ plt.plot(delta_I)
 # plt.ylabel("ST voltage")
 # plt.legend()
 # monty.savefig(plt, "ST history")
-#%% P1 vs P2
+
+#%% Sweep detuning axis
+
+low = 1.5
+high = 2.2
+points = 300
+
+# choose which gates are going up/down
+gateup = si.P2
+gatedown = si.P1
+
+parameters = {
+    "desc": "Sweep detuning axis (P1 - P2)",
+    "lockin_amplitude": "Set to 10uV",
+    "ST":   f"Fixed at {si.ST()}V (target of {target} on lockin)",
+    "SLB":  f"Fixed at {si.SLB()}V",
+    "SRB":  f"Fixed at {si.SRB()}V",
+    "SETB": f"Fixed at {si.SETB()}V",
+    "J": f"Fixed at ? V",
+    gateup.name: f"Ranged from {low}V -> {high}V in {pts} points",  # P1 or P2
+    gatedown.name: f"Ranged from {high}V -> {low}V in {pts} points",  # P1 or P2
+    }
+
+monty.newrun("detuning scan", parameters)
+
+# gate voltat
+gate_up_range = np.linspace(low, high, points)
+gate_down_range = np.linspace(high, low, points)
+
+X = np.zeros((points))
+Y = np.zeros((points))
+R = np.zeros((points))
+P = np.zeros((points))
+ST_drift = np.zeros(points)
+delta_I = np.zeros(points)
+
+fittedfeedback()
+
+# Move to the start and wait a second for the lockin to catchup
+# gate(gate_range[0])
+# time.sleep(2.0)
+# gettotarget()  # get within tolerance now
+
+with tqdm(total=points) as pbar:
+    for (j, g) in enumerate(gate_up_range):
+        gateup(g)
+        gatedown(gate_down_range[j])
+        
+        time.sleep(0.5)
+        ST_drift[j] = si.ST()
+        X[j] = lockin.X()
+        Y[j] = lockin.Y()
+        R[j] = lockin.R()
+        P[j] = lockin.P()
+        pbar.update(1)
+        
+        delta_I[j] = fittedfeedback()
+        # time.sleep(0.3)
+
+
+#swiper.plotsweep1d(gate_range, R, gate.name, monty)
+monty.save({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift, 'ST_I': delta_I})
+
+# Plot detuning
+fig = plt.figure()
+plt.plot(R)
+plt.xlabel("Detuning step")
+plt.title(monty.identifier + "." + monty.runname)
+plt.ylabel("Lockin (A)")
+plt.legend()
+monty.savefig(plt, "detuning")
+
+# Plot ST history over time
+fig = plt.figure()
+plt.plot(ST_drift)
+plt.xlabel("Detuning step number")
+plt.title(monty.identifier + "." + monty.runname)
+plt.ylabel("ST voltage")
+plt.legend()
+monty.savefig(plt, "ST history")
+
+
+#%% Charge stability diagram
 
 # Num of points to sweep over
 
-low = 1.8
-high = 1.88
-pts = 20  # n x n
+low = 1.5
+high = 2.0
+pts = 50  # n x n
 
 gate1 = si.P1
 gate2 = si.P2
@@ -405,36 +495,25 @@ parameters = {
 
 monty.newrun("p1 vs p2", parameters)
 
-#result = swiper.sweep2d(lockin,
-#                        si.P1, low, high, pts,
-#                        si.P2, low, high, pts,
-#                        monty=monty)
-
 G1_range = np.linspace(low1, high1, points1)
 G2_range = np.linspace(low2, high2, points2)
+
 X = np.zeros((points1, points2))
 Y = np.zeros((points1, points2))
 R = np.zeros((points1, points2))
 P = np.zeros((points1, points2))
-
 ST_drift = np.zeros(points1*points2)
+delta_I = np.zeros(points1*points2)
 
-gate1(G1_range[0])
-gate2(G2_range[0])
-time.sleep(2.0)
-gettotarget()  # get within tolerance now
-time.sleep(0.1)
 
 with tqdm(total=points1*points2) as pbar:
     for (j, g1) in enumerate(G1_range):
         gate1(g1)
-        time.sleep(0.5)
-        gettotarget()  # get within tolerance now
-        time.sleep(0.1)
+        time.sleep(0.3)
         
         for (i, g2) in enumerate(G2_range):
             gate2(g2)
-            time.sleep(0.1)
+            time.sleep(0.3)
             
             ST_drift[j*points1+i] = si.ST()
             X[j, i] = lockin.X()
@@ -444,52 +523,22 @@ with tqdm(total=points1*points2) as pbar:
             
             pbar.update(1)
             
-            # apply feedback
-            feedback.feedback(si.ST, lockin, target, stepsize=0.004, slope="down")
-            time.sleep(0.1)
-            feedback.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
-            time.sleep(0.1)
-            feedback.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
+            delta_I[j*points1+i] = fittedfeedback()
+            
+        # Flip the direction of the next sweep
+        monty.snapshot({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift, "ST_T": delta_I})
+        G2_range = G2_range[::-1]
         
 
-swiper.plotsweep2d(G1_range, G2_range, R, gate1.name, gate2.name, monty)
-monty.save({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift})
+swiper.plotsweep2d(G1_range, G2_range, R, gate1.name, gate2.name, monty)  # note wont separate directions
+monty.save({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift, "ST_T": delta_I})
 
 # Plot ST history over time
 fig = plt.figure()
 plt.plot(ST_drift)
-plt.xlabel("Steps when sweeping P1+P2")
+plt.xlabel("Steps when sweeping P1/P2")
 plt.title(monty.identifier + "." + monty.runname)
 plt.ylabel("ST voltage")
 plt.legend()
 monty.savefig(plt, "ST history")
-
-#%% Sweep ST vs SLB/SRB 
-
-low = 1.9
-high = 1.96
-pts = 8
-
-stlow = 3.75
-sthigh = 3.8
-stpts = 10
-
-parameters = {
-    "desc": "Sweep the SET over SLB and SRB to find a region that has good Coulomb blocking",
-    "ST":   f"Ranged from {stlow}V -> {sthigh}V in {stpts} points",
-    "SLB":  f"Ranged from {low}V -> {high}V in {pts} points",
-    "SRB":  f"Ranged from {low}V -> {high}V in {pts} points",
-    "SETB": f"Fixed at {si.SETB()}V",
-    "P1": f"Fixed at {si.P1()}",
-    "P2": f"Fixed at {si.P2()}",
-    }
-
-monty.newrun("st vs slb srb", parameters)
-
-result = swiper.sweep2d(lockin,
-                        [si.SLB, si.SRB], low, high, pts,
-                        si.ST, stlow, sthigh, stpts,
-                        delay_time=0.3, monty=monty, alternate_directions=True)
-
-monty.save(result)
 
