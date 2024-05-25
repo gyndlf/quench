@@ -52,7 +52,7 @@ class Monty:
         
         # Attempt to load the experiment if it already exists
         if os.path.exists(os.path.join(DATA_DIR, identifier.replace(".", "/").replace(" ", "_"), "experiment.yaml")):
-            print("Loading existing experiment")
+            print("Loading existing experiment (ignoring given experiment parameters)")
             self.loadexperiment()
         else:
             print(f"Started new experiment {self.identifier}")
@@ -76,6 +76,7 @@ class Monty:
                 "runname": self.runname,
                 "data": self.data,
                 "version": VERSION,
+                "info": self.parameters
                 }, fz, 4)
         # DO NOT USE PROTOCOL 5. There is a bug with large numpy arrays
         # See https://github.com/lucianopaz/compress_pickle/issues/23
@@ -230,7 +231,7 @@ class Monty:
         return self
     
     def loaddata(self, fname: str):
-        """Load a raw data file. Usually this is a SNAPSHOT file that didn't save properlly"""
+        """Load a raw data file. Usually this is a SNAPSHOT file that didn't save properly"""
         path = os.path.join(self.root, fname + ".xz")
         if not os.path.exists(path):
             raise OSError(f"ERROR: File doesn't exist '{path}'")
