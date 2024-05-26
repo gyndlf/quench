@@ -34,6 +34,13 @@ class Fridge():
             print(f"Error {r.status_code}: Failed to query fridge.")
             return {}
         return r.json()
+    
+    def temp(self) -> float:
+        """Get current mixing chamber temperature"""
+        temps = self.get_temperatures()
+        if "MC" in temps.keys():
+            return temps["MC"]
+        return 0.0
 
 
 if __name__ == "__main__":
