@@ -13,6 +13,7 @@ For reference of the animation process see: https://matplotlib.org/stable/users/
 import matplotlib.pyplot as plt
 import time
 import numpy as np
+import os
 
 
 class LivePlot:
@@ -20,10 +21,14 @@ class LivePlot:
         """
         Set up the live 1D plotting engine.
         """
+        # don't use inbuilt pycharm/spyder plotting window which cannot show animations
         self.prev_backend = plt.get_backend()
-        plt.switch_backend("TkAgg")  # don't use inbuilt pycharm/spyder plotting window which cannot show animations
+        if os.name == "posix":  
+            plt.switch_backend("TkAgg")  # mac or linux
+        else:
+            plt.switch_backend("Qt5Agg")
 
-        self.fig, self.ax = plt.subplots()
+        self.fig, self.ax = plt.subplots(figsize=(8,6))
         self.X = X
 
         self.ax.set_xlabel(xlabel)
