@@ -47,3 +47,22 @@ plt.figure()
 plt.pcolormesh(X, Y[::2], Z[::2, :], shading="nearest")
 plt.colorbar()
 plt.show()
+
+#%% Simulate
+
+from time import sleep
+
+x = np.linspace(0, 10, 100)
+y = np.sin(x**2) * np.cos(x)
+
+plt.plot(x[0], y[0])
+
+for t in range(100):
+    # Plot up to t
+    plt.gca().lines[0].set_xdata(x[:t])
+    plt.gca().lines[0].set_ydata(y[:t])
+    plt.gca().relim()
+    plt.gca().autoscale_view()
+
+    sleep(0.1)
+

@@ -12,9 +12,8 @@ Quickly perform a 2D sweep between the specified gates
 
 from qcodes_measurements.device.gate import Gate
 from monty import Monty
-
 from qcodes.instrument_drivers.stanford_research.SR860 import SR860
-
+from liveplot import LivePlot
 import numpy as np
 from tqdm import tqdm
 import time
@@ -76,18 +75,20 @@ def sweep1d(lockin: SR860,
     # Move to the start and wait a second for the lockin to catchup
     gate(gate_range[0])
     time.sleep(2.0)
-    
+
     with tqdm(total=points) as pbar:
-        for (j, g) in enumerate(gate_range):
-            gate(g)
-            #print(f"Set = {g}")
-            time.sleep(delay_time)
-            X[j] = lockin.X()
-            Y[j] = lockin.Y()
-            R[j] = lockin.R()
-            P[j] = lockin.P()
-            pbar.update(1)
-    
+        with LivePlot(X) as lplot:
+            for (j, g) in enumerate(gate_range):
+                gate(g)
+                #print(f"Set = {g}")
+                time.sleep(delay_time)
+                X[j] = lockin.X()
+                Y[j] = lockin.Y()
+                R[j] = lockin.R()
+                P[j] = lockin.P()
+                pbar.update(1)
+                lplot.update(R)
+
     if plot:
         plotsweep1d(gate_range, R, gate.name, monty)
     return {"X": X, "Y": Y, "R": R, "P": P}
@@ -107,6 +108,7 @@ def sweep1dfeedback(lockin: SR860,
     tol=0.1 range we move to get within before measuring another point
     
     """
+    print("WARNING THIS IS A LEGACY METHOD AND NOT UP TO DATE")
     print(f"Sweeping {gate} from {low}V to {high}V in {points} points.")
     gate_range = np.linspace(low, high, points)
     X = np.zeros((points))
