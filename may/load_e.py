@@ -98,7 +98,7 @@ g_range = np.linspace(low, high, pts)
 deriv = np.abs(np.diff(result["R"]))
 R = result["R"]
 
-peaks, _ = find_peaks(deriv, height=2e-12, distance=10)
+peaks, _ = find_peaks(deriv, height=1e-12, distance=50)
 #peak = np.argmax(deriv)
 
 fig = plt.figure()
@@ -124,7 +124,7 @@ print(peaks)
 #%% Find the best ST voltage to use
 
 # choose the appropriate peak here
-peak = peaks[3]
+peak = peaks[0]
 
 st_start = g_range[peak]
 fix_lockin = result['R'][peak]  # current value to lock in at
@@ -165,13 +165,12 @@ tol = 0.0001e-10
 #swiper.waitforfeedback(si.ST, lockin, target, tol=tol)
 
 def gettotarget():  # inherit global variables (bad!!!!)
-    print(f"Target = {target}")
+    print(f"Target = {target:.4e}, tol = {tol}, initial ST = {si.ST()}")
     while np.abs(lockin.R()-target) > tol:
         feedback.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
+        print(f"\rST = {si.ST():.4e}, lockin = {lockin.R():.4e}, delta = {np.abs(lockin.R()-target):.4e}", end="")
         time.sleep(0.1)
-        #print(lockin.R())
-    
-    print(f"Final ST = {si.ST()}")
+    print(f"\nFinal ST = {si.ST()}")
    
 #si.ST(st_start)
 gettotarget()
@@ -183,7 +182,7 @@ gettotarget()
 # assume `peak` is the correct peak and g_range is set well
 # `deriv` is the current SET derivative
 
-lowthresh = 1e-12  # require bigger curvature than this
+lowthresh = 0.8e-12  # require bigger curvature than this
 
 R = result["R"]
 
@@ -202,7 +201,7 @@ for i in range(peak, 0, -1):
 
 # Fit a polynominal to this region
 # p: lockin -> ST voltage
-order = 15  # polynominal order
+order = 1  # polynominal order
 coeffs = np.polyfit(R[stmin:stmax], g_range[stmin:stmax], order)
 p = np.poly1d(coeffs)
 
@@ -249,10 +248,8 @@ def fittedfeedback():  # (inherit global variables. bad!!)
         print(f"Aborting feedback: correction voltage exceeds threshold, {g1} > 4.0. No change to ST.")
     elif g1 < 3.5:  # lower bound
         print(f"Aborting feedback: correction voltage fails to meet threshold, {g1} < 3.5. No change to ST.")
-    # elif np.abs(r-target) > 0.1*1e-10:
-    #     print ('Here comes the tunneling')
-    #     return delta_I1
-    elif np.abs(delta_g) > 0.0002:  # how to pick a good value consistently?
+    elif np.abs(r-target) > 0.1e-10:
+    #elif np.abs(delta_g) > 0.00005:  # how to pick a good value consistently?
         #print ('large shift')
         si.ST(st - delta_g/2)
         time.sleep(0.5)  # delay after changing ST
@@ -296,8 +293,8 @@ print(f"Done. Took {time.time()-tic} seconds.")
 #%% 1D scan of P1
 
 low = 2.2
-high = 1.8
-points = 800
+high = 1.5
+points = 600
 gate = si.P1
 
 parameters = {
@@ -310,6 +307,7 @@ parameters = {
     "J1": f"Fixed at {gb_control_si.VICL()}V",
     "P1": f"Ranged from {low}V -> {high}V in {pts} points",
     "P2": f"Fixed at {si.P2()}V",
+    "temp": f"Mixing chamber {fridge.temp()} K"
     }
 
 monty.newrun("P1 scan", parameters)
@@ -347,16 +345,6 @@ with tqdm(total=points) as pbar:
         delta_I[j] = fittedfeedback()
         # time.sleep(0.3)
 
-        
-        # apply feedback
-        #feedback.feedback(si.ST, lockin, target, stepsize=0.004, slope="down")
-        #time.sleep(0.1)
-        #feedback.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
-        #time.sleep(0.1)
-        #feedback.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
-        
-        
-
 
 swiper.plotsweep1d(gate_range, R, gate.name, monty)
 monty.save({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift, 'ST_I': delta_I})
@@ -385,12 +373,12 @@ plt.plot(delta_I)
 #%% Sweep detuning axis
 
 low = 1.5
-high = 2.2
+high = 2.0
 points = 300
 
 # choose which gates are going up/down
-gateup = si.P2
-gatedown = si.P1
+gateup = si.P1
+gatedown = si.P2
 
 parameters = {
     "desc": "Sweep detuning axis (P1 - P2)",
@@ -467,8 +455,8 @@ monty.savefig(plt, "ST history")
 
 # Num of points to sweep over
 
-low = 1.5
-high = 2.0
+low = 1.2
+high = 2.2
 #pts = 10  # n x n
 
 gate1 = si.P1
@@ -517,7 +505,7 @@ with tqdm(total=points1*points2) as pbar:
             gate2(g2)
             time.sleep(0.3)
             
-            ST_drift[j*points1+i] = si.ST()
+            ST_drift[j*points2+i] = si.ST()
             X[j, i] = lockin.X()
             Y[j, i] = lockin.Y()
             R[j, i] = lockin.R()
@@ -525,7 +513,7 @@ with tqdm(total=points1*points2) as pbar:
             
             pbar.update(1)
             
-            delta_I[j*points1+i] = fittedfeedback()
+            delta_I[j*points2+i] = fittedfeedback()
             
         # Flip the direction of the next sweep
         monty.snapshot({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift, "ST_T": delta_I})
@@ -535,6 +523,7 @@ with tqdm(total=points1*points2) as pbar:
 swiper.plotsweep2d(G1_range, G2_range, R, gate1.name, gate2.name, monty)  # note wont separate directions
 monty.save({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift, "ST_T": delta_I})
 
+
 # Plot ST history over time
 fig = plt.figure()
 plt.plot(ST_drift)
@@ -542,7 +531,7 @@ plt.xlabel("Steps when sweeping P1/P2")
 plt.title(monty.identifier + "." + monty.runname)
 plt.ylabel("ST voltage")
 plt.legend()
-monty.savefig(plt, "ST history")
+#monty.savefig(plt, "ST history")
 
 
 # Split the 2D sweep into forwad and backward plots
@@ -553,7 +542,6 @@ plt.colorbar()
 plt.ylabel(f"{gate1.name} voltage (V)")
 plt.xlabel(f"{gate2.name} voltage (V)")
 plt.title(monty.identifier + "." + monty.runname + "_forward")
-monty.savefig(plt, "2D")
 monty.savefig(plt, "stability forward")
 
 plt.figure()
@@ -562,5 +550,4 @@ plt.colorbar()
 plt.ylabel(f"{gate1.name} voltage (V)")
 plt.xlabel(f"{gate2.name} voltage (V)")
 plt.title(monty.identifier + "." + monty.runname + "_back")
-monty.savefig(plt, "2D")
 monty.savefig(plt, "stability backward")
