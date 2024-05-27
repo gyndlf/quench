@@ -76,18 +76,17 @@ def sweep1d(lockin: SR860,
     gate(gate_range[0])
     time.sleep(2.0)
 
-    with tqdm(total=points) as pbar:
-        with LivePlot(X) as lplot:
-            for (j, g) in enumerate(gate_range):
-                gate(g)
-                #print(f"Set = {g}")
-                time.sleep(delay_time)
-                X[j] = lockin.X()
-                Y[j] = lockin.Y()
-                R[j] = lockin.R()
-                P[j] = lockin.P()
-                pbar.update(1)
-                lplot.update(R)
+    with tqdm(total=points) as pbar, LivePlot(gate_range, xlabel=f"{gate.name} gate voltage (V)", ylabel="Current (A)") as lplot:
+        for (j, g) in enumerate(gate_range):
+            gate(g)
+            #print(f"Set = {g}")
+            time.sleep(delay_time)
+            X[j] = lockin.X()
+            Y[j] = lockin.Y()
+            R[j] = lockin.R()
+            P[j] = lockin.P()
+            pbar.update(1)
+            lplot.update(R)
 
     if plot:
         plotsweep1d(gate_range, R, gate.name, monty)

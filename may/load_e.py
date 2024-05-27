@@ -74,8 +74,8 @@ dots.get_all_voltages(mdac)
 # Get our surroundings
 
 low = 3.8
-high = 3.88
-pts = 200
+high = 3.92
+pts = 100
 
 parameters = {
     "desc": "Quick 1D scan of the SET over ST",
@@ -98,7 +98,7 @@ g_range = np.linspace(low, high, pts)
 deriv = np.abs(np.diff(result["R"]))
 R = result["R"]
 
-peaks, _ = find_peaks(deriv, height=1e-12, distance=50)
+peaks, _ = find_peaks(deriv, height=1e-12, distance=10)
 #peak = np.argmax(deriv)
 
 fig = plt.figure()
@@ -124,7 +124,7 @@ print(peaks)
 #%% Find the best ST voltage to use
 
 # choose the appropriate peak here
-peak = peaks[0]
+peak = peaks[3]
 
 st_start = g_range[peak]
 fix_lockin = result['R'][peak]  # current value to lock in at
@@ -248,7 +248,7 @@ def fittedfeedback():  # (inherit global variables. bad!!)
         print(f"Aborting feedback: correction voltage exceeds threshold, {g1} > 4.0. No change to ST.")
     elif g1 < 3.5:  # lower bound
         print(f"Aborting feedback: correction voltage fails to meet threshold, {g1} < 3.5. No change to ST.")
-    elif np.abs(r-target) > 0.1e-10:
+    elif np.abs(r-target) > 0.05e-10:
     #elif np.abs(delta_g) > 0.00005:  # how to pick a good value consistently?
         #print ('large shift')
         si.ST(st - delta_g/2)
@@ -455,9 +455,8 @@ monty.savefig(plt, "ST history")
 
 # Num of points to sweep over
 
-low = 1.2
-high = 2.2
-#pts = 10  # n x n
+low = 1.6
+high = 2.0
 
 gate1 = si.P1
 gate2 = si.P2
@@ -466,8 +465,8 @@ low1 = low
 low2 = low
 high1 = high
 high2 = high
-points1 = 400
-points2 = 200
+points1 = 200
+points2 = 100
 
 parameters = {
     "desc": "Sweep both P1 and P2 with feedback present.",
