@@ -98,8 +98,9 @@ class LivePlot:
         self.ax.draw_artist(self.ln)
         for spine in self.ax.spines.values():
             self.ax.draw_artist(spine)
-        
-        self.fig.canvas.update()
+
+        if os.name != "posix":
+            self.fig.canvas.update()
         
         # copy the image to the GUI state, but screen might not be changed yet
         self.fig.canvas.blit(self.fig.bbox)
@@ -115,6 +116,6 @@ if __name__ == "__main__":
     y = np.zeros(100)
     with LivePlot(x) as lplot:
         for t in range(100):
-            y[t] = np.random.rand()
+            y[t] = np.random.rand() + 0.1 + t/10
             lplot.update(y)
             time.sleep(0.1)
