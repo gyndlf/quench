@@ -21,6 +21,7 @@ from scipy.signal import find_peaks
 from tqdm import tqdm
 
 from monty import Monty
+from liveplot import LivePlot
 import feedback
 import swiper
 import MDAC
@@ -74,7 +75,7 @@ dots.get_all_voltages(mdac)
 # Get our surroundings
 
 low = 3.8
-high = 3.92
+high = 3.95
 pts = 100
 
 parameters = {
@@ -159,15 +160,15 @@ lockin.R()
 
 #%% Lock in on target
 
-target = fix_lockin  
-tol = 0.0001e-10
+#target = fix_lockin  
+tol = 0.001e-10
 
 #swiper.waitforfeedback(si.ST, lockin, target, tol=tol)
 
 def gettotarget():  # inherit global variables (bad!!!!)
     print(f"Target = {target:.4e}, tol = {tol}, initial ST = {si.ST()}")
     while np.abs(lockin.R()-target) > tol:
-        feedback.feedback(si.ST, lockin, target, stepsize=0.001, slope="down")
+        feedback(si.ST, lockin, target, stepsize=0.01, slope="down")
         print(f"\rST = {si.ST():.4e}, lockin = {lockin.R():.4e}, delta = {np.abs(lockin.R()-target):.4e}", end="")
         time.sleep(0.1)
     print(f"\nFinal ST = {si.ST()}")
@@ -259,13 +260,43 @@ def fittedfeedback():  # (inherit global variables. bad!!)
         time.sleep(0.5)  # delay after changing ST
     return delta_I1
 
-fittedfeedback()
+
+def feedback(gate, lockin, target: float, stepsize=0.001, slope="down"):
+    """
+    Apply proportional feedback blindly
+    """
+    if slope == "up":
+        sgn = 1
+    elif slope == "down":
+        sgn = -1
+    else:
+        raise (f"Unknown slope '{slope}'. Must be either 'up' or 'down'")
+
+    r = lockin.R()
+    error = (target - r) * sgn
+    adjust = error / target * stepsize  # normalised error func
+    g = gate() + adjust  # new gate voltage
+
+    if g > 4.0:  # upper bound
+        print(f"Aborting feedback: correction voltage exceeds threshold, {g} > 4.0. No change to ST.")
+    elif g < 3.5:  # lower bound
+        print(f"Aborting feedback: correction voltage fails to meet threshold, {g} < 3.5. No change to ST.")
+    elif np.abs(r-target) > 0.03e-10:  # take a small step if good
+        print(f"small step {np.abs(r-target)}")
+        gate(gate() + adjust/4)
+        time.sleep(0.5)
+    else:
+        gate(g)
+        time.sleep(0.5)
+
+
+#fittedfeedback()
 
 #%% Load electrons
 
 #dots.loaddots(si, high=1.2)
 
-thresh = 0.9
+thresh = 1.1
 
 tic = time.time()
 si.SETB(thresh)
@@ -293,7 +324,7 @@ print(f"Done. Took {time.time()-tic} seconds.")
 #%% 1D scan of P1
 
 low = 2.2
-high = 1.5
+high = 1.7
 points = 600
 gate = si.P1
 
@@ -323,14 +354,14 @@ P = np.zeros((points))
 ST_drift = np.zeros(points)
 delta_I = np.zeros(points)
 
-fittedfeedback()
+#fittedfeedback()
 
 # Move to the start and wait a second for the lockin to catchup
 # gate(gate_range[0])
 # time.sleep(2.0)
 # gettotarget()  # get within tolerance now
 
-with tqdm(total=points) as pbar:
+with tqdm(total=points) as pbar, LivePlot(gate_range, xlabel="P1 gate voltage (V)", ylabel="Current (A)") as lplot:
     for (j, g) in enumerate(gate_range):
         gate(g)
         
@@ -341,8 +372,11 @@ with tqdm(total=points) as pbar:
         R[j] = lockin.R()
         P[j] = lockin.P()
         pbar.update(1)
+        lplot.update(R)
         
-        delta_I[j] = fittedfeedback()
+        feedback(si.ST, lockin, target, stepsize=0.008, slope="down")
+        
+        #delta_I[j] = fittedfeedback()
         # time.sleep(0.3)
 
 
