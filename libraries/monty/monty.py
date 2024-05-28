@@ -22,11 +22,6 @@ VERSION = 1.2
 
 RESERVED_KEYWORDS = ["version", "identifier", "experiment"]
 
-# TODO
-#  - Upgrade to a folder based design
-#  - Save multiple experiment data with same experiments (run numbers)
-#  - Save associated figures in experiment dir
-
 
 class Monty:
     """Library for saving and loading data quickly."""

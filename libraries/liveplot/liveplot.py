@@ -1,23 +1,22 @@
 # -*- coding: utf-8 -*-
 """
-Created May 26, 2024
+Created Sun May 26 14:00:00 2024
 
-Plot 1D live as it is being generated
+Plot 1D live as it is being generated. Support for dynamically updating x and y-axis scales.
 
 For reference of the animation process see: https://matplotlib.org/stable/users/explain/animations/blitting.html
 
 @author: jzingel
 """
 
-
 import matplotlib.pyplot as plt
-import time
 import numpy as np
 import os
 
 
 class LivePlot:
-    def __init__(self, X: np.ndarray, xlabel="x", ylabel="y", ignore_trailing_zeros=True):
+    def __init__(self, X: np.ndarray, xlabel="x", ylabel="y",
+                 ignore_trailing_zeros=True, figsize=(8,6)):
         """
         Set up the live 1D plotting engine.
         """
@@ -28,7 +27,7 @@ class LivePlot:
         else:
             plt.switch_backend("Qt5Agg")
 
-        self.fig, self.ax = plt.subplots(figsize=(8,6))
+        self.fig, self.ax = plt.subplots(figsize=figsize)
         self.X = X
         self.ignorezeros = ignore_trailing_zeros
 
@@ -41,8 +40,10 @@ class LivePlot:
         self.ax.get_yaxis().set_visible(False)
         self.ax.get_xaxis().set_visible(False)
         self.ax.set_title("Realtime data")
+
         plt.show(block=False)
         plt.pause(0.1)  # flush changes
+
         self.bg = self.fig.canvas.copy_from_bbox(self.fig.bbox)
         self.ax.draw_artist(self.ln)
         self.fig.canvas.blit(self.fig.bbox)  # show the result on the screen
@@ -112,6 +113,8 @@ class LivePlot:
 
 
 if __name__ == "__main__":
+    import time
+
     x = np.linspace(0, 10, 100)
     y = np.zeros(100)
     with LivePlot(x) as lplot:
