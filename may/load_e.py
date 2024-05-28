@@ -63,11 +63,11 @@ experiment = {
     "desc": "Load electrons into the dot while using new feedback techniques."
 }
 
-#monty = Monty("double dot.fitted feedback", experiment)
-#monty = Monty("double dot.with feedback", experiment)
-monty = Monty("double dot.load e2", experiment)
+monty = Monty("sam.load e2", experiment)
 
-dots.get_all_voltages(mdac)
+#monty = Monty("double dot.load e2", experiment)
+
+#dots.get_all_voltages(mdac)
 
 
 #%% Quick 1D SET sweep 
@@ -281,10 +281,10 @@ def feedback(gate, lockin, target: float, stepsize=0.001, slope="down"):
         print(f"Aborting feedback: correction voltage exceeds threshold, {g} > 4.0. No change to ST.")
     elif g < 3.5:  # lower bound
         print(f"Aborting feedback: correction voltage fails to meet threshold, {g} < 3.5. No change to ST.")
-    elif np.abs(r-target) > 0.03e-10:  # take a small step if good
-        print(f"small step {np.abs(r-target)}")
-        gate(gate() + adjust/4)
-        time.sleep(0.5)
+    #elif np.abs(r-target) > 0.03e-10:  # take a small step if good
+    #    print(f"small step {np.abs(r-target)}")
+    #    gate(gate() + adjust/4)
+    #    time.sleep(0.5)
     else:
         gate(g)
         time.sleep(0.5)
@@ -323,13 +323,13 @@ print(f"Done. Took {time.time()-tic} seconds.")
 
 #%% 1D scan of P1
 
-low = 2.2
+low = 2.1
 high = 1.7
 points = 600
 gate = si.P1
 
 parameters = {
-    "desc": "1D sweep of P1 (with fitted feedback techniques)",
+    "desc": "1D sweep of P1 (with proportional feedback techniques)",
     "lockin_amplitude": "Set to 10uV",
     "ST":   f"Fixed at {si.ST()}V (target of {target} on lockin)",
     "SLB":  f"Fixed at {si.SLB()}V",
@@ -489,18 +489,18 @@ monty.savefig(plt, "ST history")
 
 # Num of points to sweep over
 
-low = 1.6
-high = 2.0
+low = 2.2
+high = 1.7
 
 gate1 = si.P1
 gate2 = si.P2
 
-low1 = low
-low2 = low
-high1 = high
-high2 = high
+low1 = 1.7
+low2 = 1.9
+high1 = 2.2
+high2 = 2.0
 points1 = 200
-points2 = 100
+points2 = 40
 
 parameters = {
     "desc": "Sweep both P1 and P2 with feedback present.",
@@ -527,11 +527,11 @@ ST_drift = np.zeros(points1*points2)
 delta_I = np.zeros(points1*points2)
 
 
-with tqdm(total=points1*points2) as pbar:
+with tqdm(total=points1*points2) as pbar, LivePlot(np.arange(points1*points2), xlabel="P1/P2 step num", ylabel="ST voltage (V)") as lplot:
     for (j, g1) in enumerate(G1_range):
         gate1(g1)
         time.sleep(0.3)
-        fittedfeedback()
+        gettotarget()
         time.sleep(1)
         
         for (i, g2) in enumerate(G2_range):
@@ -545,8 +545,10 @@ with tqdm(total=points1*points2) as pbar:
             P[j, i] = lockin.P()
             
             pbar.update(1)
+            lplot.update(ST_drift)
             
-            delta_I[j*points2+i] = fittedfeedback()
+            feedback(si.ST, lockin, target, stepsize=0.02, slope="down")
+            #delta_I[j*points2+i] = fittedfeedback()
             
         # Flip the direction of the next sweep
         monty.snapshot({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift, "ST_T": delta_I})
@@ -584,3 +586,19 @@ plt.ylabel(f"{gate1.name} voltage (V)")
 plt.xlabel(f"{gate2.name} voltage (V)")
 plt.title(monty.identifier + "." + monty.runname + "_back")
 monty.savefig(plt, "stability backward")
+
+#%% 
+_R = R.copy()
+_R[1::2, :] = _R[1::2, ::-1]  # reverse odd rows
+
+plt.figure()
+plt.pcolormesh(G2_range, G1_range, _R, shading="nearest")  
+plt.colorbar()
+plt.ylabel(f"{gate1.name} voltage (V)")
+plt.xlabel(f"{gate2.name} voltage (V)")
+plt.title(monty.identifier + "." + monty.runname + "_both")
+
+
+
+
+
