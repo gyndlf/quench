@@ -63,9 +63,9 @@ experiment = {
     "desc": "Load electrons into the dot while using new feedback techniques."
 }
 
-monty = Monty("sam.load e2", experiment)
+#monty = Monty("sam.load e2", experiment)
 
-#monty = Monty("double dot.load e2", experiment)
+monty = Monty("double dot.load e3", experiment)
 
 #dots.get_all_voltages(mdac)
 
@@ -74,9 +74,9 @@ monty = Monty("sam.load e2", experiment)
 
 # Get our surroundings
 
-low = 3.8
-high = 3.95
-pts = 100
+low = 3.2
+high = 3.45
+pts = 500
 
 parameters = {
     "desc": "Quick 1D scan of the SET over ST",
@@ -125,7 +125,7 @@ print(peaks)
 #%% Find the best ST voltage to use
 
 # choose the appropriate peak here
-peak = peaks[3]
+peak = peaks[2]
 
 st_start = g_range[peak]
 fix_lockin = result['R'][peak]  # current value to lock in at
@@ -168,7 +168,7 @@ tol = 0.001e-10
 def gettotarget():  # inherit global variables (bad!!!!)
     print(f"Target = {target:.4e}, tol = {tol}, initial ST = {si.ST()}")
     while np.abs(lockin.R()-target) > tol:
-        feedback(si.ST, lockin, target, stepsize=0.01, slope="down")
+        feedback(si.ST, lockin, target, stepsize=0.001, slope="up")
         print(f"\rST = {si.ST():.4e}, lockin = {lockin.R():.4e}, delta = {np.abs(lockin.R()-target):.4e}", end="")
         time.sleep(0.1)
     print(f"\nFinal ST = {si.ST()}")
@@ -202,7 +202,7 @@ for i in range(peak, 0, -1):
 
 # Fit a polynominal to this region
 # p: lockin -> ST voltage
-order = 1  # polynominal order
+order = 7  # polynominal order
 coeffs = np.polyfit(R[stmin:stmax], g_range[stmin:stmax], order)
 p = np.poly1d(coeffs)
 
@@ -249,11 +249,11 @@ def fittedfeedback():  # (inherit global variables. bad!!)
         print(f"Aborting feedback: correction voltage exceeds threshold, {g1} > 4.0. No change to ST.")
     elif g1 < 3.5:  # lower bound
         print(f"Aborting feedback: correction voltage fails to meet threshold, {g1} < 3.5. No change to ST.")
-    elif np.abs(r-target) > 0.05e-10:
+    #elif np.abs(r-target) > 0.05e-10:
     #elif np.abs(delta_g) > 0.00005:  # how to pick a good value consistently?
         #print ('large shift')
-        si.ST(st - delta_g/2)
-        time.sleep(0.5)  # delay after changing ST
+   #     si.ST(st - delta_g/2)
+   #     time.sleep(0.5)  # delay after changing ST
     else:
         # print(f"Adjusting {gate.name} voltage to {g} V")
         si.ST(st - delta_g)
@@ -261,7 +261,7 @@ def fittedfeedback():  # (inherit global variables. bad!!)
     return delta_I1
 
 
-def feedback(gate, lockin, target: float, stepsize=0.001, slope="down"):
+def feedback(gate, lockin, target: float, stepsize=0.001, slope="up"):
     """
     Apply proportional feedback blindly
     """
@@ -277,9 +277,9 @@ def feedback(gate, lockin, target: float, stepsize=0.001, slope="down"):
     adjust = error / target * stepsize  # normalised error func
     g = gate() + adjust  # new gate voltage
 
-    if g > 4.0:  # upper bound
+    if g > 3.5:  # upper bound
         print(f"Aborting feedback: correction voltage exceeds threshold, {g} > 4.0. No change to ST.")
-    elif g < 3.5:  # lower bound
+    elif g < 3.0:  # lower bound
         print(f"Aborting feedback: correction voltage fails to meet threshold, {g} < 3.5. No change to ST.")
     #elif np.abs(r-target) > 0.03e-10:  # take a small step if good
     #    print(f"small step {np.abs(r-target)}")
@@ -309,7 +309,7 @@ print(f"Done. Took {time.time()-tic} seconds.")
 #dots.flushdots(si, low=1.0, high=1.9)
 
 low = 1.0
-high = 1.9
+high = 1.75
 
 tic = time.time()
 si.P1(low)
@@ -323,8 +323,15 @@ print(f"Done. Took {time.time()-tic} seconds.")
 
 #%% 1D scan of P1
 
-low = 2.1
-high = 1.7
+up = False
+
+if up:
+    low = 1.75
+    high = 2.1
+else:
+    low = 2.1
+    high = 1.75
+
 points = 600
 gate = si.P1
 
@@ -343,6 +350,8 @@ parameters = {
 
 monty.newrun("P1 scan", parameters)
 
+gettotarget()
+time.sleep(2)
 
 # don't use swiper to make modifying the feedback easier
 
@@ -374,9 +383,9 @@ with tqdm(total=points) as pbar, LivePlot(gate_range, xlabel="P1 gate voltage (V
         pbar.update(1)
         lplot.update(R)
         
-        feedback(si.ST, lockin, target, stepsize=0.008, slope="down")
-        
+        feedback(si.ST, lockin, target, stepsize=8e-4, slope="up")
         #delta_I[j] = fittedfeedback()
+        
         # time.sleep(0.3)
 
 
