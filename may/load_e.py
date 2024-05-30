@@ -416,24 +416,26 @@ plt.plot(delta_I)
 
 #%% Sweep detuning axis
 
-low = 1.5
-high = 2.0
-points = 300
+low = 1.75
+high = 2.2
+points = 600
+stepsize = 12e-4
 
 # choose which gates are going up/down
 gateup = si.P1
 gatedown = si.P2
 
 parameters = {
-    "desc": "Sweep detuning axis (P1 - P2)",
+    "desc": "Sweep detuning axis (P1 - P2). Stepsize = {stepsize}",
     "lockin_amplitude": "Set to 10uV",
     "ST":   f"Fixed at {si.ST()}V (target of {target} on lockin)",
     "SLB":  f"Fixed at {si.SLB()}V",
     "SRB":  f"Fixed at {si.SRB()}V",
     "SETB": f"Fixed at {si.SETB()}V",
     "J1": f"Fixed at {gb_control_si.VICL()}V",
-    gateup.name: f"Ranged from {low}V -> {high}V in {pts} points",  # P1 or P2
-    gatedown.name: f"Ranged from {high}V -> {low}V in {pts} points",  # P1 or P2
+    gateup.name: f"Ranged from {low}V -> {high}V in {points} points",  # P1 or P2
+    gatedown.name: f"Ranged from {high}V -> {low}V in {points} points",  # P1 or P2
+    "temp": f"Mixing chamber {fridge.temp()} K",
     }
 
 monty.newrun("detuning scan", parameters)
@@ -449,37 +451,42 @@ P = np.zeros((points))
 ST_drift = np.zeros(points)
 delta_I = np.zeros(points)
 
-fittedfeedback()
+#fittedfeedback()
+gettotarget()
+time.sleep(2)
 
 # Move to the start and wait a second for the lockin to catchup
 # gate(gate_range[0])
 # time.sleep(2.0)
 # gettotarget()  # get within tolerance now
 
-with tqdm(total=points) as pbar:
+with tqdm(total=points) as pbar, LivePlot(gate_up_range, xlabel="Detuning", ylabel="Current (A)") as lplot:
     for (j, g) in enumerate(gate_up_range):
         gateup(g)
         gatedown(gate_down_range[j])
-        
         time.sleep(0.5)
+        
         ST_drift[j] = si.ST()
         X[j] = lockin.X()
         Y[j] = lockin.Y()
         R[j] = lockin.R()
         P[j] = lockin.P()
-        pbar.update(1)
         
-        delta_I[j] = fittedfeedback()
+        pbar.update(1)
+        lplot.update(R)
+        
+        feedback(si.ST, lockin, target, stepsize=stepsize, slope="up")
+        #delta_I[j] = fittedfeedback()
         # time.sleep(0.3)
 
 
 #swiper.plotsweep1d(gate_range, R, gate.name, monty)
-monty.save({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift, 'ST_I': delta_I})
+monty.save({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift}) #, 'ST_I': delta_I})
 
 # Plot detuning
 fig = plt.figure()
-plt.plot(R)
-plt.xlabel("Detuning step")
+plt.plot(gate_up_range, R)
+plt.xlabel(f"{gateup.name} voltage (up)")
 plt.title(monty.identifier + "." + monty.runname)
 plt.ylabel("Lockin (A)")
 plt.legend()
