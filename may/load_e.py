@@ -507,19 +507,21 @@ monty.savefig(plt, "ST history")
 # gate 1 stepped over slowly
 gate1 = si.P2
 low1 = 1.75
-high1 = 1.81
-points1 = 100
+high1 = 2.1
+points1 = 200
 
 # gate 2 swept frequently
 gate2 = si.P1
 low2 = 1.75
 high2 = 2.1
-points2 = 600
+points2 = 200
+
+stepsize = 12e-4
 
 parameters = {
     "desc": "Sweep both P1 and P2 with feedback present.",
     "lockin_amplitude": "Set to 10uV",
-    "ST":   f"Fixed at {si.ST()}V (target of {target} on lockin)",
+    "ST":   f"Fixed at {si.ST()}V (target of {target} on lockin, stepsize of {stepsize})",
     "SLB":  f"Fixed at {si.SLB()}V",
     "SRB":  f"Fixed at {si.SRB()}V",
     "SETB": f"Fixed at {si.SETB()}V",
@@ -563,11 +565,11 @@ with tqdm(total=points1*points2) as pbar, LiveContourPlot(G2_range, G1_range, xl
             pbar.update(1)
             lplot.update(R)
             
-            feedback(si.ST, lockin, target, stepsize=8e-4, slope="up")
+            feedback(si.ST, lockin, target, stepsize=stepsize, slope="up")
             #delta_I[j*points2+i] = fittedfeedback()
             
         # Flip the direction of the next sweep
-        monty.snapshot({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift, "ST_T": delta_I})
+        monty.snapshot({"X": X, "Y": Y, "R": R, "P": P, "ST": ST_drift}) #, "ST_T": delta_I})
         G2_range = G2_range[::-1]
         
 
