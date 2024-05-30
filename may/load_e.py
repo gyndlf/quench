@@ -21,7 +21,7 @@ from scipy.signal import find_peaks
 from tqdm import tqdm
 
 from monty import Monty
-from liveplot import LivePlot
+from liveplot import LivePlot, LiveContourPlot
 import feedback
 import swiper
 import MDAC
@@ -332,18 +332,19 @@ else:
     low = 2.1
     high = 1.75
 
-points = 600
+stepsize = 15e-4
+points = 100
 gate = si.P1
 
 parameters = {
-    "desc": "1D sweep of P1 (with proportional feedback techniques)",
+    "desc": "1D sweep of P1 (with proportional feedback techniques). Stepsize = {stepsize}",
     "lockin_amplitude": "Set to 10uV",
     "ST":   f"Fixed at {si.ST()}V (target of {target} on lockin)",
     "SLB":  f"Fixed at {si.SLB()}V",
     "SRB":  f"Fixed at {si.SRB()}V",
     "SETB": f"Fixed at {si.SETB()}V",
     "J1": f"Fixed at {gb_control_si.VICL()}V",
-    "P1": f"Ranged from {low}V -> {high}V in {pts} points",
+    "P1": f"Ranged from {low}V -> {high}V in {points} points",
     "P2": f"Fixed at {si.P2()}V",
     "temp": f"Mixing chamber {fridge.temp()} K"
     }
@@ -383,7 +384,7 @@ with tqdm(total=points) as pbar, LivePlot(gate_range, xlabel="P1 gate voltage (V
         pbar.update(1)
         lplot.update(R)
         
-        feedback(si.ST, lockin, target, stepsize=8e-4, slope="up")
+        feedback(si.ST, lockin, target, stepsize=stepsize, slope="up")
         #delta_I[j] = fittedfeedback()
         
         # time.sleep(0.3)
@@ -496,32 +497,31 @@ monty.savefig(plt, "ST history")
 
 #%% Charge stability diagram
 
-# Num of points to sweep over
+# gate 1 stepped over slowly
+gate1 = si.P2
+low1 = 1.75
+high1 = 1.81
+points1 = 100
 
-low = 2.2
-high = 1.7
-
-gate1 = si.P1
-gate2 = si.P2
-
-low1 = 1.7
-low2 = 1.9
-high1 = 2.2
-high2 = 2.0
-points1 = 200
-points2 = 40
+# gate 2 swept frequently
+gate2 = si.P1
+low2 = 1.75
+high2 = 2.1
+points2 = 600
 
 parameters = {
     "desc": "Sweep both P1 and P2 with feedback present.",
     "lockin_amplitude": "Set to 10uV",
-    "ST":   f"Fixed at {si.ST()}V (measured changes due to feedback)",
+    "ST":   f"Fixed at {si.ST()}V (target of {target} on lockin)",
     "SLB":  f"Fixed at {si.SLB()}V",
     "SRB":  f"Fixed at {si.SRB()}V",
     "SETB": f"Fixed at {si.SETB()}V",
     "J1": f"Fixed at {gb_control_si.VICL()}V",
-    "P1": f"Ranged from {low}V -> {high}V in {points1} points",
-    "P2": f"Ranged from {low}V -> {high}V in {points2} points",
+    gate1.name: f"Ranged from {low1}V -> {high1}V in {points1} points",
+    gate2.name: f"Ranged from {low2}V -> {high2}V in {points2} points",
+    "temp": f"Mixing chamber {fridge.temp()} K",
     }
+
 
 monty.newrun("p1 vs p2", parameters)
 
@@ -536,11 +536,11 @@ ST_drift = np.zeros(points1*points2)
 delta_I = np.zeros(points1*points2)
 
 
-with tqdm(total=points1*points2) as pbar, LivePlot(np.arange(points1*points2), xlabel="P1/P2 step num", ylabel="ST voltage (V)") as lplot:
+with tqdm(total=points1*points2) as pbar, LiveContourPlot(G2_range, G1_range, xlabel=f"{gate2.name} voltage", ylabel=f"{gate1.name} voltage") as lplot:
     for (j, g1) in enumerate(G1_range):
         gate1(g1)
         time.sleep(0.3)
-        gettotarget()
+        #gettotarget()
         time.sleep(1)
         
         for (i, g2) in enumerate(G2_range):
@@ -554,9 +554,9 @@ with tqdm(total=points1*points2) as pbar, LivePlot(np.arange(points1*points2), x
             P[j, i] = lockin.P()
             
             pbar.update(1)
-            lplot.update(ST_drift)
+            lplot.update(R)
             
-            feedback(si.ST, lockin, target, stepsize=0.02, slope="down")
+            feedback(si.ST, lockin, target, stepsize=8e-4, slope="up")
             #delta_I[j*points2+i] = fittedfeedback()
             
         # Flip the direction of the next sweep
