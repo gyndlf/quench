@@ -87,6 +87,8 @@ class LiveContourPlot:
         # draw what updated
         self.ax.draw_artist(self.ax.patch)
         self.ax.draw_artist(self.qmesh)
+        for spine in self.ax.spines.values():
+            self.ax.draw_artist(spine)
         if self.show_colorbar:
             self.cbar.ax.draw_artist(self.cbar.ax)  # draw colorbar
 
