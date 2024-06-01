@@ -13,19 +13,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
+from livebase import LiveBase
 
-class LivePlot:
+
+class LivePlot(LiveBase):
     def __init__(self, X: np.ndarray, xlabel="x", ylabel="y",
                  ignore_trailing_zeros=True, figsize=(8,6)):
         """
         Set up the live 1D plotting engine.
         """
-        # don't use inbuilt pycharm/spyder plotting window which cannot show animations
-        self.prev_backend = plt.get_backend()
-        if os.name == "posix":  
-            plt.switch_backend("TkAgg")  # mac or linux
-        else:
-            plt.switch_backend("Qt5Agg")
+        super().__init__()
 
         self.fig, self.ax = plt.subplots(figsize=figsize)
         self.X = X
@@ -50,23 +47,7 @@ class LivePlot:
         self.ax.get_yaxis().set_visible(True)
         self.ax.get_xaxis().set_visible(True)
 
-    def __enter__(self):
-        """
-        Yield the plot engine object to use
-        """
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        Close the current plot window
-        """
-        plt.close()
-        plt.switch_backend(self.prev_backend)  # use IDE plots
-
     def update(self, Y: np.ndarray):
-        """
-        Update the plot data with new incoming data
-        """
         if Y.shape != self.X.shape:
             raise ValueError(f"Y shape of {Y.shape} does not match X shape of {self.X.shape}")
             

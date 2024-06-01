@@ -13,19 +13,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
+from livebase import LiveBase
 
-class LiveContourPlot:
+
+class LiveContourPlot(LiveBase):
     def __init__(self, X: np.ndarray, Y: np.ndarray, xlabel="x", ylabel="y",
                  colorbar=True, figsize=(8,6), replace_zero_with_nan=True):
         """
         Set up the live 2D plotting engine
         """
-        # don't use inbuilt pycharm/spyder plotting window which cannot show animations
-        self.prev_backend = plt.get_backend()
-        if os.name == "posix":
-            plt.switch_backend("TkAgg")  # mac or linux
-        else:
-            plt.switch_backend("Qt5Agg")
+        super().__init__()
 
         self.X = X
         self.Y = Y
@@ -56,23 +53,7 @@ class LiveContourPlot:
         if self.show_colorbar:
             self.cbar.ax.set_visible(True)
 
-    def __enter__(self):
-        """
-        Yeild the live plot object to use
-        """
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        Close the current plot window
-        """
-        plt.close()
-        plt.switch_backend(self.prev_backend)
-
     def update(self, Z: np.ndarray):
-        """
-        Update the plot with new incoming data
-        """
         if Z.shape != self.Z_shape:
             raise ValueError(f"Z shape of {Z.shape} does not match X shape of {self.X.shape} and Y shape {self.Y.shape}")
         if self.replace_zero:
@@ -104,7 +85,7 @@ if __name__ == "__main__":
     x = np.linspace(0, 10, 30)
     y = np.linspace(5, 15, 10)
     z = np.zeros((len(y), len(x)))
-    with LiveContourPlot(x, y, colorbar=False) as lplot:
+    with LiveContourPlot(x, y, colorbar=True) as lplot:
         for i in range(len(y)):
             for j in range(len(x)):
                 z[i,j] = np.random.rand() + 0.1 + len(y)*i + j
