@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created Sat Jun 06 10:39 pm 2024
+Created Sat Jun 01 10:39 pm 2024
 
 Common methods used for sweeping the SET and choosing a good coulomb region
 
-Definition file.
+Stub file. (Needs to be run from console with instruments loaded)
 
 @author: jzingel
 """
@@ -18,6 +18,8 @@ monty = Monty.__class__
 lockin = SR860.__class__
 
 #%% Standard ST sweep
+
+import swiper
 
 low = 3.2
 high = 3.45

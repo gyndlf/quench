@@ -12,6 +12,8 @@ from qcodes.instrument_drivers.stanford_research.SR860 import SR860
 import numpy as np
 import time
 
+# WARNING: DO NOT USE THESE FUNCTIONS
+# These are all outdated! Instead, use june/proportionalfeedback.py for updated versions
 
 def waitforfeedback(gate: Gate, lockin: SR860, target: float, tol: float = 1e-12, stepsize=0.001, slope="down"):
     """
