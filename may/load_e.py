@@ -161,7 +161,7 @@ lockin.R()
 
 #%% Lock in on target
 
-#target = fix_lockin  
+target = fix_lockin
 tol = 0.001e-10
 
 #swiper.waitforfeedback(si.ST, lockin, target, tol=tol)
