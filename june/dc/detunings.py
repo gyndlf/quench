@@ -12,11 +12,6 @@ Stub file. (Needs to be run from console with instruments loaded)
 # Inherited from may/load_e.py which itself inherited from somewhere else...
 # Note that the 2D sweep matrix is saved in different dimensions to before. Now it matches reality initially.
 
-from monty import Monty
-from qcodes.instrument_drivers.stanford_research.SR860 import SR860
-from .dummydevice import CMOSfake, GBfake
-from fridge import Fridge
-
 # It is assumed that these variables have already be set somewhere else
 raise(RuntimeError("Do not run this cell."))
 lockin = SR860()
@@ -34,7 +29,7 @@ from tqdm import tqdm
 import time
 import numpy as np
 from liveplot import LivePlot
-from june.proportionalfeedback import feedback, gettotarget
+from june.dc.proportionalfeedback import feedback, gettotarget
 import matplotlib.pyplot as plt
 
 
