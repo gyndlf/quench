@@ -9,9 +9,6 @@ Use this file by importing it into your function or running it in the console.
 @author: jzingel
 """
 
-from quench.libraries import broom
-broom.sweep()
-
 from qcodes_measurements.device import DigitalDevice, DigitalMode, SPIController, Device, BB
 from qcodes_measurements.device.states import ConnState, GateMode
 

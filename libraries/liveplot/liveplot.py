@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 
-from livebase import LiveBase
+from .livebase import LiveBase
 
 
 class LivePlot(LiveBase):
