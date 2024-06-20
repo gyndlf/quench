@@ -18,9 +18,17 @@ if os.name == "posix":  # mac or linux
     DATA_DIR = "/mnt/c/Users/LD2007/Documents/Si_CMOS_james/measurements/data"
 else:  # Windows (Probably LD fridge)
     DATA_DIR = "C:\\Users\\LD2007\\Documents\\Si_CMOS_james\\data"
-VERSION = 1.2
+VERSION = 1.3
 
-RESERVED_KEYWORDS = ["version", "identifier", "experiment"]
+# run names cannot be the following as they would collide with internal identifiers
+RESERVED_KEYWORDS = ["version", "identifier", "experiment", "runs"]
+
+# Configure yaml to dump unknown objects as `repr(object)`
+yaml.SafeDumper.yaml_representers[None] = lambda self, data: \
+    yaml.representer.SafeRepresenter.represent_str(
+        self,
+        repr(data),
+    )
 
 
 class Monty:
@@ -35,11 +43,13 @@ class Monty:
 
         self.experiment = experiment  # general experiment description
         self.data = {}
-        self.runs = {}  # indexed by runid
+        self.runs = {}  # indexed by runname
+        self.run_map = []  # indexed by runid to return run name
 
         # Run values (only parameters; don't keep the raw data here)
         self.isrunrunning = False
         self.figures = []  # fnames of figures
+        self.datafiles = []  # fnames of compressed data files
         self.runid = 0
         self.runname = ""
         self.start_time = datetime.min  # stand in
@@ -80,15 +90,16 @@ class Monty:
         """Save the experiment as a yaml file."""
         path = os.path.join(self.root, "experiment.yaml")
         with open(path, 'w') as yf:
-            yf.write("# << This file is machine generated. Do not edit directly >>\n")
-            yf.write(yaml.dump({
+            yf.write(f"# << This file is machine generated. Last updated {datetime.now().isoformat()}. Do not edit directly. >>\n")
+            yf.write(yaml.safe_dump({
                     "identifier": self.identifier,
                     "experiment": self.experiment,
                     "version": VERSION,
+                    "runs": self.run_map,
                 }))
             yf.write("\n")
             for run in self.runs.keys():
-                yf.write(yaml.dump({
+                yf.write(yaml.safe_dump({
                     run: self.runs[run]
                 }))
                 yf.write("\n")
@@ -100,7 +111,7 @@ class Monty:
         while os.path.exists(newpath + "." + extension):  # Check if an existing file exists
             repeat += 1
             newpath = path + "." + str(repeat)
-        return newpath + "." + extension
+        return newpath + "." + extension, repeat
 
     def save(self, data=None):
         """Save the experiment. Will not overwrite existing files."""
@@ -108,7 +119,8 @@ class Monty:
             self.data = data
         self.finishrun()
         print(f"Saving to {self.runname}.xz")
-        path = self._find_unused_filename(os.path.join(self.root, self.runname), "xz")
+        path, repeat = self._find_unused_filename(os.path.join(self.root, self.runname), "xz")
+        self.datafiles.append(self.runname + (("." + str(repeat)) if repeat > 0 else "") + ".xz")
         self._save_data(path, self.runname)
         print("Saving to experiment.yaml")
         self._save_experiment()
@@ -125,14 +137,16 @@ class Monty:
         if data is not None:
             self.data = data
         path = os.path.join(self.root, self.runname + "_SNAPSHOT.xz")  # we overwrite the old snapshot if it exists
+        if self.runname + "_SNAPSHOT.xz" not in self.datafiles:
+            self.datafiles.append(self.runname + "_SNAPSHOT.xz")  # we overwrite the file so only add it once
         self._save_data(path, self.runname + "_SNAPSHOT")
         self._save_experiment()
 
     def savefig(self, plt, desc: str, dpi=1000):
         """Save the given plot as a png."""
         fname = self.runname + "_" + desc.replace(" ", "_")
-        self.figures.append(fname + ".png")
-        path = self._find_unused_filename(os.path.join(self.root, fname), "png")
+        path, repeat = self._find_unused_filename(os.path.join(self.root, fname), "png")
+        self.figures.append(fname + (("." + str(repeat)) if repeat > 0 else "") + ".png")
         plt.savefig(path, bbox_inches="tight", dpi=dpi)
         self._save_experiment()
 
@@ -155,6 +169,7 @@ class Monty:
         self.start_time = datetime.now()
         self.parameters = parameters
         self.figures = []
+        self.datafiles = []
         print(f"Started new run {self.runname}")
         self._save_experiment()
 
@@ -169,7 +184,10 @@ class Monty:
             "time_end": str(datetime.now()),
             "parameters": self.parameters,
             "figures": self.figures,
+            "datafiles": self.datafiles,
         }
+        if self.runname not in self.run_map:  # dont add duplicates when rerunning runs
+            self.run_map.append(self.runname)
         print(f"Run finished and took {str(datetime.now() - self.start_time)}.")
 
     def loadrun(self, runname: str):
@@ -212,6 +230,7 @@ class Monty:
             print(f"WARNING: Experiment version {experiment['version']} does not match current monty version {VERSION}")
         self.identifier = experiment["identifier"]
         self.experiment = experiment["experiment"]
+        self.run_map = experiment["runs"]
         
         runid = 0
         self.runs = {}
@@ -227,7 +246,9 @@ class Monty:
     
     def loaddata(self, fname: str):
         """Load a raw data file. Usually this is a SNAPSHOT file that didn't save properly"""
-        path = os.path.join(self.root, fname + ".xz")
+        if not fname.endswith(".xz"):
+            fname += ".xz"
+        path = os.path.join(self.root, fname)
         if not os.path.exists(path):
             raise OSError(f"ERROR: File doesn't exist '{path}'")
         print(f"Loading '{path}'")
@@ -238,5 +259,7 @@ class Monty:
             self.data = data["data"]
             print(f"Loaded data with run name {data['runname']}")
         return self.data
+
+
         
 
