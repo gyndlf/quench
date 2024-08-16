@@ -105,6 +105,10 @@ def autodb(res):
     """Change a.u. to dB power. Used in the data result."""
     return 10*np.log10(np.abs(res)**2/50*1000)
 
+def autodeg(res):
+    """Change a.u. result to phase angle in degrees."""
+    return np.unwrap(np.angle(res))  # FIXME: Add axis=?
+
 def setupchannels(shfqc: SHFQC, params):
     """Set up the SHFQC device for PSB."""
     with shfqc.device.set_transaction():
