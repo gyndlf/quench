@@ -80,7 +80,7 @@ def timeToSamples(time, samplingRateDivider):
     samples_raw = time * (1/(2**samplingRateDivider))/0.5e-9
     #samples_modulo = int(samples_raw) % 16
     #samples = int(samples_raw) - int(samples_modulo)
-    return 16*np.floor(samples_raw/16)
+    return 16*int(np.floor(samples_raw/16))
     #return samples
 
 
@@ -192,8 +192,8 @@ def synchchannels(shfqc: SHFQC, channels):
     shfqc.device.system.internaltrigger.synchronization.enable(1)
 
 ###### SEQUENCES ######
-def setupsequencers(shfqc: SHFQC, params):
-    samplingDivider = params["timings_sec"]["samplingDivider"]
+def setupsequencers(shfqc: SHFQC, params, print_programs=True):
+    samplingDivider = params["timings_sec"]["sampling_divider"]
     wait_and_settle = params["timings_sec"]["settle"]
     read_len = params["timings_sec"]["read"]
     init_len = params["timings_sec"]["mixed_initilise"]
@@ -296,41 +296,31 @@ def setupsequencers(shfqc: SHFQC, params):
     }}
     """
 
-    # Quantum Analyser Channel
-    seqc_program_prior_read = f"""
-    repeat({params["averaging"]["seqc_averages"]}) {{
-        waitDigTrigger(1);
-
-        setTrigger(1);
-        setTrigger(0);
-    }}
-    """
-
     readout_prog_code = f"""
-    setTrigger(0); // Set low as this starts the spectroscopy readout....
-
-    repeat({params["averaging"]["seqc_averages"]}) {{
-        waitDigTrigger(1);
-
-        playZero(224); // lineup with SG trigger (224 samples = lines up with SG trigger);
-
-        playZero({timeToSamples(init_len, samplingDivider)},  {samplingDivider});
-        playZero({timeToSamples(wait_and_settle, samplingDivider)},  {samplingDivider});
-        playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});
-
-        setTrigger(1);  // trigger the output. As this matches "chan0seqtrig0" the spectroscopy is started
-        setTrigger(0);
-
-        playZero({timeToSamples(read_len, samplingDivider)},  {samplingDivider});
-        playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});
-
-        setTrigger(1);  // trigger the output. As this matches "chan0seqtrig0" the spectroscopy is started
-        setTrigger(0);
-
-        playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});
-        playZero({timeToSamples(wait_and_settle, samplingDivider)},  {samplingDivider});
-        }}
-    """
+            setTrigger(0); // Set low as this starts the spectroscopy readout....
+        
+            repeat({params["averaging"]["seqc_averages"]}) {{
+                waitDigTrigger(1);
+        
+                playZero(224); // lineup with SG trigger (224 samples = lines up with SG trigger);
+        
+                playZero({timeToSamples(init_len, samplingDivider)},  {samplingDivider});
+                playZero({timeToSamples(wait_and_settle, samplingDivider)},  {samplingDivider});
+                playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});
+        
+                setTrigger(1);  // trigger the output. As this matches "chan0seqtrig0" the spectroscopy is started
+                setTrigger(0);
+        
+                playZero({timeToSamples(read_len, samplingDivider)},  {samplingDivider});
+                playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});
+        
+                setTrigger(1);  // trigger the output. As this matches "chan0seqtrig0" the spectroscopy is started
+                setTrigger(0);
+        
+                playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});
+                playZero({timeToSamples(wait_and_settle, samplingDivider)},  {samplingDivider});
+                }}
+            """
 
     # Create waveform pulses
     ramp_rate = params["amplitude_volts"]["ramp_rate"]
@@ -351,8 +341,9 @@ def setupsequencers(shfqc: SHFQC, params):
     seq.waveforms[1] = read_p
     shfqc["P1"].awg.load_sequencer_program(seq)
     shfqc["P1"].awg.write_to_waveform_memory(seq.waveforms)
-    print(f"_________ {shfqc["P1"]} _________")
-    print(seq.code)
+    if print_programs:
+        print(f"_________ {shfqc["P1"]} _________")
+        print(seq.code)
 
     # P2
     seq = Sequence()
@@ -362,18 +353,26 @@ def setupsequencers(shfqc: SHFQC, params):
     seq.waveforms[1] = read_p
     shfqc["P2"].awg.load_sequencer_program(seq)
     shfqc["P2"].awg.write_to_waveform_memory(seq.waveforms)
-    print(f"_________ {shfqc["P2"]} _________")
-    print(seq.code)
+    if print_programs:
+        print(f"_________ {shfqc["P2"]} _________")
+        print(seq.code)
 
     # J
     shfqc["J"].awg.load_sequencer_program(seqc_program_j)
-    print(f"_________ {shfqc["J"]} _________")
-    print(seqc_program_j)
+    if print_programs:
+        print(f"_________ {shfqc["J"]} _________")
+        print(seqc_program_j)
 
     # ST
     shfqc["ST"].awg.load_sequencer_program(seqc_program_st)
-    print(f"_________ {shfqc["ST"]} _________")
-    print(seqc_program_st)
+    if print_programs:
+        print(f"_________ {shfqc["ST"]} _________")
+        print(seqc_program_st)
+
+
+    # QA
+    shfqc["measure"].generator.load_sequencer_program(readout_prog_code)
+
 
 
 def cmdtable(ct, amplitude, length, wave_index, ct_index, samplingDivider):
@@ -395,12 +394,16 @@ def setup_command_tables(shfqc: SHFQC, params):
     for c in ["P1", "P2"]:
         cmdtable(shfqc.cmd_tables[c],
                  amplitude=voltToDbm(params["amplitude_volts"]["mixed_pulse"][c], params["powers"]["drive"]),
-                 length=timeToSamples(params["timings_sec"]["mixed_initilise"], params["timings_sec"]["samplingDivider"]),
+                 length=timeToSamples(params["timings_sec"]["mixed_initilise"], params["timings_sec"]["sampling_divider"]),
                  wave_index=0,
                  ct_index=0,
-                 samplingDivider=params["timings_sec"]["samplingDivider"]
+                 samplingDivider=params["timings_sec"]["sampling_divider"]
                  )
+    upload_command_tables(shfqc)
 
+    
+def upload_command_tables(shfqc: SHFQC):
+    """Upload the command tables to the device"""
     # Upload the command tables
     for c in shfqc.cmd_tables.keys():
         shfqc[c].awg.commandtable.upload_to_device(shfqc.cmd_tables[c])
@@ -464,7 +467,10 @@ def check_sequencers_finished(shfqc: SHFQC, sequencers):
     # - Bit 4: sequencer is waiting for synchronization with other channels
 
     for c in sequencers:
-        state = shfqc[c].generator.sequencer.status()
+        if c == shfqc.qa_channel_name:
+            state = shfqc[c].generator.sequencer.status()
+        else:
+            state = shfqc[c].awg.sequencer.status()
         if state != 4:
             warnings.warn(f"Sequencer {c} in unknown state. Perhaps they are not synchronised? State = {bin(state)}")
             time.sleep(0.5)
@@ -496,14 +502,14 @@ def calculate_feedback(shfqc: SHFQC, last_point, params):
              length=timeToSamples(params["timings_sec"]["trigger"]-2e-3, 9),  # TODO: Remove constant
              wave_index=0,
              ct_index=0,
-             samplingDivider=params["timings_sec"]["samplingDivider"],
+             samplingDivider=params["timings_sec"]["sampling_divider"],
             )
     return st_corr
 
 
 def movemeasurement(shfqc: SHFQC, p1, p2, j, params):
     """Modify the command tables of P1/P2/J to measure the next appropriate datapoint."""
-    samplingDivider = params["timings_sec"]["samplingDivider"]
+    samplingDivider = params["timings_sec"]["sampling_divider"]
     read_len = params["timings_sec"]["read"]
     buffer = params["timings_sec"]["buffer"]
 
@@ -512,27 +518,28 @@ def movemeasurement(shfqc: SHFQC, p1, p2, j, params):
              length=timeToSamples(buffer + read_len + buffer, samplingDivider),
              wave_index=1,
              ct_index=1,
-             samplingDivider=params["timings_sec"]["samplingDivider"]
+             samplingDivider=params["timings_sec"]["sampling_divider"]
             )
     cmdtable(shfqc.cmd_tables["P2"],
              amplitude=voltToDbm(p2, shfqc["P2"].output.range()),
              length=timeToSamples(buffer + read_len + buffer, samplingDivider),
              wave_index=1,
              ct_index=1,
-             samplingDivider=params["timings_sec"]["samplingDivider"]
+             samplingDivider=params["timings_sec"]["sampling_divider"]
             )
     cmdtable(shfqc.cmd_tables["J"],
              amplitude= voltToDbm(j, shfqc["J"].output.range()),
              length=timeToSamples(buffer + read_len + buffer + read_len, samplingDivider),  # TODO: THIS LINE IS WRONG
              wave_index=0,
              ct_index=1,
-             samplingDivider=params["timings_sec"]["samplingDivider"]
+             samplingDivider=params["timings_sec"]["sampling_divider"]
             )
 
 ###### EXPERIMENTS ######
 
 def run_empty_experiment(shfqc: SHFQC):
     """Run measurement where we only measure and don't drive anything."""
+    synchchannels(shfqc, [shfqc.qa_channel_name])
     shfqc.device.system.internaltrigger.enable(0)
 
     result_node = shfqc["measure"].spectroscopy.result.data.wave
@@ -545,7 +552,7 @@ def run_empty_experiment(shfqc: SHFQC):
     time.sleep(0.2)  # delay for networking issues
 
     # wait for the measurement to complete
-    wait_for_internal_trigger(shfqc.device)
+    wait_for_internal_trigger(shfqc)
     check_sequencers_finished(shfqc, ["measure"])
 
 
@@ -555,7 +562,7 @@ def run_empty_experiment(shfqc: SHFQC):
         shfqc["measure"].spectroscopy.result.enable.wait_for_state_change(0, timeout=10)
 
     # get results
-    results = get_results(shfqc.session, result_node, timeout=5)
+    results = get_results(shfqc, result_node, timeout=5)
     result_node.unsubscribe()
 
     # verify results
@@ -566,6 +573,7 @@ def run_empty_experiment(shfqc: SHFQC):
 
 def run_psb_experiment(shfqc: SHFQC):
     """Run one PSB experiment. Returns the reference and measurement points."""
+    synchchannels(shfqc, [shfqc.qa_channel_name] + shfqc.drive_channels)
     shfqc.device.system.internaltrigger.enable(0)
 
     result_node = shfqc["measure"].spectroscopy.result.data.wave
@@ -585,7 +593,7 @@ def run_psb_experiment(shfqc: SHFQC):
     time.sleep(0.2)
 
     # wait for the measurement to complete
-    wait_for_internal_trigger(progress=True, leave=False)
+    wait_for_internal_trigger(shfqc, progress=True, leave=False)
     # device.system.internaltrigger. .wait_for_state_change(1.0, timeout=100)  # wait for completion
 
     check_sequencers_finished(shfqc, ["measure", "P1", "P2"])
@@ -595,7 +603,7 @@ def run_psb_experiment(shfqc: SHFQC):
         shfqc["measure"].spectroscopy.result.enable.wait_for_state_change(0, timeout=100)
 
     # get results
-    results = get_results(result_node, timeout=5)
+    results = get_results(shfqc, result_node, timeout=5)
     result_node.unsubscribe()
 
     # verify results
