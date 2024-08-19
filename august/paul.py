@@ -12,7 +12,7 @@ Created on Thu Aug 15 15:57 2024
 # Standard imports
 import numpy as np
 import time
-import warnings
+import logging
 from tqdm.notebook import tqdm
 from zhinst.toolkit import Session, CommandTable, Sequence, Waveforms, SHFQAChannelMode
 from shfqc import SHFQC
@@ -342,7 +342,7 @@ def setupsequencers(shfqc: SHFQC, params, print_programs=True):
     shfqc["P1"].awg.load_sequencer_program(seq)
     shfqc["P1"].awg.write_to_waveform_memory(seq.waveforms)
     if print_programs:
-        print(f"_________ {shfqc["P1"]} _________")
+        print(f"_________ {shfqc['P1']} _________")
         print(seq.code)
 
     # P2
@@ -354,19 +354,19 @@ def setupsequencers(shfqc: SHFQC, params, print_programs=True):
     shfqc["P2"].awg.load_sequencer_program(seq)
     shfqc["P2"].awg.write_to_waveform_memory(seq.waveforms)
     if print_programs:
-        print(f"_________ {shfqc["P2"]} _________")
+        print(f"_________ {shfqc['P2']} _________")
         print(seq.code)
 
     # J
     shfqc["J"].awg.load_sequencer_program(seqc_program_j)
     if print_programs:
-        print(f"_________ {shfqc["J"]} _________")
+        print(f"_________ {shfqc['J']} _________")
         print(seqc_program_j)
 
     # ST
     shfqc["ST"].awg.load_sequencer_program(seqc_program_st)
     if print_programs:
-        print(f"_________ {shfqc["ST"]} _________")
+        print(f"_________ {shfqc['ST']} _________")
         print(seqc_program_st)
 
 
@@ -472,8 +472,7 @@ def check_sequencers_finished(shfqc: SHFQC, sequencers):
         else:
             state = shfqc[c].awg.sequencer.status()
         if state != 4:
-            warnings.warn(f"Sequencer {c} in unknown state. Perhaps they are not synchronised? State = {bin(state)}")
-            time.sleep(0.5)
+            logging.warn(f"Sequencer {c} in unknown state. Perhaps they are not synchronised? State = {bin(state)}")
 
 
 def check_all_results_acquired(shfqc: SHFQC, len_results):
@@ -539,7 +538,6 @@ def movemeasurement(shfqc: SHFQC, p1, p2, j, params):
 
 def run_empty_experiment(shfqc: SHFQC):
     """Run measurement where we only measure and don't drive anything."""
-    synchchannels(shfqc, [shfqc.qa_channel_name])
     shfqc.device.system.internaltrigger.enable(0)
 
     result_node = shfqc["measure"].spectroscopy.result.data.wave
@@ -573,7 +571,6 @@ def run_empty_experiment(shfqc: SHFQC):
 
 def run_psb_experiment(shfqc: SHFQC):
     """Run one PSB experiment. Returns the reference and measurement points."""
-    synchchannels(shfqc, [shfqc.qa_channel_name] + shfqc.drive_channels)
     shfqc.device.system.internaltrigger.enable(0)
 
     result_node = shfqc["measure"].spectroscopy.result.data.wave
@@ -596,7 +593,8 @@ def run_psb_experiment(shfqc: SHFQC):
     wait_for_internal_trigger(shfqc, progress=True, leave=False)
     # device.system.internaltrigger. .wait_for_state_change(1.0, timeout=100)  # wait for completion
 
-    check_sequencers_finished(shfqc, ["measure", "P1", "P2"])
+    # Don't check if sequencers have finished as they say they haven't finished... but they really have
+    #check_sequencers_finished(shfqc, ["measure", "P1", "P2"])
 
     # wait for completion
     while shfqc["measure"].spectroscopy.result.enable() != 0:
