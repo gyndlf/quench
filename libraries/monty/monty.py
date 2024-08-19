@@ -12,6 +12,8 @@ import pickle
 import os
 from datetime import datetime
 import yaml
+import logging
+
 
 if os.name == "posix":  # mac or linux
     print("Warning running on posix... what are you doing??")
@@ -61,6 +63,11 @@ class Monty:
             self.loadexperiment()
         else:
             print(f"Started new experiment {self.identifier}")
+
+    @property
+    def plot_title(self):
+        """Returns the current experiment and run name as a title."""
+        return self.identifier + "." + self.runname
 
     def __repr__(self):
         """Display a current representation of monty."""
@@ -195,7 +202,6 @@ class Monty:
         runname = runname.replace(" ", "_")
         if runname not in self.runs.keys():
             raise ValueError(f"ERROR: Unknown run '{runname}'.")
-        print(self.runs[runname])
         path = os.path.join(self.root, runname + ".xz")
         if not os.path.exists(path):
             raise OSError(f"ERROR: File doesn't exist '{path}'")
@@ -208,6 +214,12 @@ class Monty:
                 print(f'{data["runname"]}')
                 print(f"WARNING: File runname ({data['runname']}) does not match requested run name {runname}")
             self.data = data["data"]
+        # Configure internal variables to point to loaded data
+        self.runname = data["runname"]
+        try:
+            self.parameters = self.runs[self.runname]
+        except KeyError:
+            logging.warn("Loaded run is not found in experiment parameter list.")
         return self.data
 
     def loadexperiment(self, identifier: str = None):
