@@ -269,6 +269,8 @@ class Monty:
             if data["version"] != VERSION:
                 print("WARNING: Saved object does not match current Monty version")
             self.data = data["data"]
+            self.parameters = data["info"]
+            self.runname = data["runname"]
             print(f"Loaded data with run name {data['runname']}")
         return self.data
 

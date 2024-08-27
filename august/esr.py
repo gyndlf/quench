@@ -116,25 +116,43 @@ def setupchannels(shfqc: SHFQC, params, hyper=False):
     with shfqc.device.set_transaction():
         # setup drive channels
         for c in shfqc.drive_channels:
-            if c != "MW":
+            if c == "MW_I":
                 shfqc[c].output.range(params["powers"]["drive"])  # in dBm
-                shfqc[c].output.rflfpath(0)  # use LF not RF (1 for RF)
+                shfqc[c].output.rflfpath(1)  # use LF not RF (1 for RF)
 
                 # set the center synth frequency (oscillator frequency)
                 synth = shfqc[c].synthesizer()
-                shfqc.device.synthesizers[synth].centerfreq(0)  # in Hz
+                shfqc.device.synthesizers[synth].centerfreq(params["mw"]["freqs"]["center"])  # in Hz
+                shfqc[c].oscs[0].freq(0)  # oscillator 1 frequency (Hz) disable for DC
+                shfqc[c].oscs[1].freq(0)  # oscillator 2 frequency (Hz)
+            elif c ==  "MW_Q":
+                shfqc[c].output.range(params["powers"]["drive"])  # in dBm
+                shfqc[c].output.rflfpath(1)  # use LF not RF (1 for RF)
+
+                # set the center synth frequency (oscillator frequency)
+                synth = shfqc[c].synthesizer()
+                shfqc.device.synthesizers[synth].centerfreq(params["mw"]["freqs"]["center"])  # in Hz
+                shfqc[c].oscs[0].freq(0)  # oscillator 1 frequency (Hz) disable for DC
+                shfqc[c].oscs[1].freq(0)  # oscillator 2 frequency (Hz)
+            elif c ==  "MW":
+                shfqc[c].output.range(params["powers"]["drive"])  # in dBm
+                shfqc[c].output.rflfpath(1)  # use LF not RF (1 for RF)
+
+                # set the center synth frequency (oscillator frequency)
+                synth = shfqc[c].synthesizer()
+                shfqc.device.synthesizers[synth].centerfreq(params["mw"]["freqs"]["center"])  # in Hz
                 shfqc[c].oscs[0].freq(0)  # oscillator 1 frequency (Hz) disable for DC
                 shfqc[c].oscs[1].freq(0)  # oscillator 2 frequency (Hz)
 
             else:  # special setup for MW channel
                 shfqc[c].output.range(params["powers"]["mw_drive"])
-                shfqc[c].output.rflfpath(1)  # use RF
+                shfqc[c].output.rflfpath(0)  # use RF
 
                  # set the center synth frequency (oscillator frequency)
                 synth = shfqc[c].synthesizer()
-                shfqc.device.synthesizers[synth].centerfreq(params["mw"]["freqs"]["start"])  # in Hz
-                shfqc[c].oscs[0].freq(params["mw"]["freqs"]["start"])  # oscillator 1 frequency (Hz) disable for DC
-                shfqc[c].oscs[1].freq(params["mw"]["freqs"]["start"])  # oscillator 2 frequency (Hz)
+                shfqc.device.synthesizers[synth].centerfreq(0)  # in Hz
+                shfqc[c].oscs[0].freq(0)#params["mw"]["freqs"]["start"])  # oscillator 1 frequency (Hz) disable for DC
+                shfqc[c].oscs[1].freq(0)#params["mw"]["freqs"]["start"])  # oscillator 2 frequency (Hz)
             
             shfqc[c].awg.outputamplitude(1.0)  # overall amplitude scaling factor (don't really need to change)
             shfqc[c].output.on(1)  # enable output
@@ -203,8 +221,9 @@ def synchchannels(shfqc: SHFQC, channels):
     Sync the given channels, un-syncing the rest.
     Assumes that the internal trigger should always be synced.
     """
-    for i in range(6):
+    for i in range(6):  # desync all channels
         shfqc.device.sgchannels[i].synchronization.enable(0)
+    shfqc.device.qachannels[0].synchronization.enable(0)
     time.sleep(1)
     for c in channels:
         shfqc[c].synchronization.enable(1)
@@ -246,6 +265,7 @@ def setupsequencers(shfqc: SHFQC, params, print_programs=True):
         playZero({timeToSamples(wait_and_settle, samplingDivider)},  {samplingDivider});    // wait and settle
         playZero({timeToSamples(read_len, samplingDivider)},  {samplingDivider});           // read reference
         playZero({timeToSamples(mw_len, samplingDivider)},  {samplingDivider});             // chirp
+        playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});             // buffer
 
         executeTableEntry(1);                                                               // read
 
@@ -273,6 +293,7 @@ def setupsequencers(shfqc: SHFQC, params, print_programs=True):
         playZero({timeToSamples(wait_and_settle, samplingDivider)},  {samplingDivider});    // wait and settle
         playZero({timeToSamples(read_len, samplingDivider)},  {samplingDivider});           // read reference
         playZero({timeToSamples(mw_len, samplingDivider)},  {samplingDivider});             // chirp
+        playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});             // buffer
 
         executeTableEntry(1);                                                               // read
 
@@ -303,6 +324,7 @@ def setupsequencers(shfqc: SHFQC, params, print_programs=True):
         executeTableEntry(1);                                                               // read reference
 
         playZero({timeToSamples(mw_len, samplingDivider)},  {samplingDivider});             // chirp
+        playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});             // buffer
 
         // playZero({timeToSamples(read_len, samplingDivider)},  {samplingDivider});            // read
         playZero({timeToSamples(wait_and_settle, samplingDivider)},  {samplingDivider});    // wait and settle
@@ -310,21 +332,21 @@ def setupsequencers(shfqc: SHFQC, params, print_programs=True):
     }}
     """
 
-    seqc_program_st = f"""
-    // Assign a single channel waveform to wave table entry 0
-    wave w_st = ones({timeToSamples(wait_and_settle, 9)});
-    assignWaveIndex(1,2, w_st, 0);
+    # seqc_program_st = f"""
+    # // Assign a single channel waveform to wave table entry 0
+    # wave w_st = ones({timeToSamples(wait_and_settle, 9)});
+    # assignWaveIndex(1,2, w_st, 0);
 
-    repeat({params["averaging"]["seqc_averages"]}) {{
-        waitDigTrigger(1);
+    # repeat({params["averaging"]["seqc_averages"]}) {{
+    #     waitDigTrigger(1);
 
-        playZero({timeToSamples(init_len, samplingDivider)},  {samplingDivider});
-        playZero({timeToSamples(wait_and_settle - 10 * buffer, samplingDivider)},  {samplingDivider});
-        //playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});
+    #     playZero({timeToSamples(init_len, samplingDivider)},  {samplingDivider});
+    #     playZero({timeToSamples(wait_and_settle - 10 * buffer, samplingDivider)},  {samplingDivider});
+    #     //playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});
 
-        executeTableEntry(0);
-    }}
-    """
+    #     executeTableEntry(0);
+    # }}
+    # """
 
     readout_prog_code = f"""
     setTrigger(0); // Set low as this starts the spectroscopy readout....
@@ -344,6 +366,7 @@ def setupsequencers(shfqc: SHFQC, params, print_programs=True):
         playZero({timeToSamples(read_len, samplingDivider)},  {samplingDivider});
         playZero({timeToSamples(mw_len, samplingDivider)},  {samplingDivider});             // chirp
         playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});
+        playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});             // buffer
 
         setTrigger(1);  // trigger the output. As this matches "chan0seqtrig0" the spectroscopy is started
         setTrigger(0);
@@ -395,10 +418,10 @@ def setupsequencers(shfqc: SHFQC, params, print_programs=True):
         print(seqc_program_j)
 
     # ST
-    shfqc["ST"].awg.load_sequencer_program(seqc_program_st)
-    if print_programs:
-        print(f"_________ {shfqc['ST']} _________")
-        print(seqc_program_st)
+    # shfqc["ST"].awg.load_sequencer_program(seqc_program_st)
+    # if print_programs:
+    #     print(f"_________ {shfqc['ST']} _________")
+    #     print(seqc_program_st)
 
     # QA
     shfqc["measure"].generator.load_sequencer_program(readout_prog_code)
@@ -415,6 +438,7 @@ def setup_hyper_sequencers(shfqc: SHFQC, params, print_programs=False):
     init_len = params["timings_sec"]["mixed_initilise"]
     buffer = params["timings_sec"]["buffer"]
     num_detuning = params["averaging"]["num_detuning"]
+    mw_len = params["timings_sec"]["mw_pulse"]
 
     # Signal generator channels
     seqc_program_p = f"""
@@ -434,6 +458,7 @@ def setup_hyper_sequencers(shfqc: SHFQC, params, print_programs=False):
 
             playZero({timeToSamples(wait_and_settle, samplingDivider)},  {samplingDivider});    // wait and settle
             playZero({timeToSamples(read_len, samplingDivider)},  {samplingDivider});           // read reference
+            playZero({timeToSamples(mw_len, samplingDivider)},  {samplingDivider});             // chirp
 
             executeTableEntry(ct);                                                              // read
 
@@ -463,6 +488,8 @@ def setup_hyper_sequencers(shfqc: SHFQC, params, print_programs=False):
             playZero({timeToSamples(wait_and_settle, samplingDivider)},  {samplingDivider});    // wait and settle
 
             executeTableEntry(1);                                                               // read reference
+            
+            playZero({timeToSamples(mw_len, samplingDivider)},  {samplingDivider});             // chirp
 
             // playZero({timeToSamples(read_len, samplingDivider)},  {samplingDivider});        // read
             playZero({timeToSamples(wait_and_settle, samplingDivider)},  {samplingDivider});    // wait and settle
@@ -488,6 +515,7 @@ def setup_hyper_sequencers(shfqc: SHFQC, params, print_programs=False):
             setTrigger(0);
 
             playZero({timeToSamples(read_len, samplingDivider)},  {samplingDivider});
+            playZero({timeToSamples(mw_len, samplingDivider)},  {samplingDivider});             // chirp
             playZero({timeToSamples(buffer, samplingDivider)},  {samplingDivider});
 
             setTrigger(1);  // trigger the output. As this matches "chan0seqtrig0" the spectroscopy is started
@@ -545,6 +573,52 @@ def setup_hyper_sequencers(shfqc: SHFQC, params, print_programs=False):
     if print_programs:
         print(f"_________ {shfqc['measure']} _________")
         print(readout_prog_code)
+
+
+def setup_dummy_sequencers(shfqc: SHFQC, params, print_programs=False):
+
+    samplingDivider = params["timings_sec"]["sampling_divider"]
+
+    mw_len = params["timings_sec"]["mw_pulse"]
+    
+    mw_amp = params["mw"]["gain"]
+    mw_phase = 3.1415/2 # hardcoded, don't need it changed but need it in sequence
+    # mw_start_freq = params["mw"]["freqs"]["start"]
+    # mw_stop_freq = params["mw"]["freqs"]["start"] + params["mw"]["span"]
+
+    seqc_program_mw_dummy = f"""
+    // Assign a single channel waveform to wave table entry 0
+    wave w_mw = ones({timeToSamples(mw_len, params["mw"]["sampling_divider"])});
+    assignWaveIndex(1,2, w_mw, 0);
+
+    // Reset the oscillator phase
+    resetOscPhase();
+
+    repeat({params["averaging"]["seqc_averages"]}) {{
+
+        // Trigger the scope
+
+        waitDigTrigger(1);
+
+        setTrigger(1);
+        setTrigger(0);
+
+        executeTableEntry(1);                                                               // chirp
+
+    }}
+    """
+
+    seq = Sequence()
+    seq.code = seqc_program_mw_dummy
+    # shfqc["MW_I"].awg.load_sequencer_program(seq)
+    # shfqc["MW_Q"].awg.load_sequencer_program(seq)
+    shfqc["MW"].awg.load_sequencer_program(seq)
+    # if print_programs:
+    #     print(f"_________ {shfqc['MW']} _________")
+    #     print(seq.code)
+
+    # Make sure to reupload command tables as they are cleared whenever a sequence is loaded
+
 
 
 def cmdtable(ct, amplitude, length, wave_index, ct_index, samplingDivider):
@@ -724,16 +798,17 @@ def move_j_measurement(shfqc: SHFQC, j, params):
     samplingDivider = params["timings_sec"]["sampling_divider"]
     read_len = params["timings_sec"]["read"]
     buffer = params["timings_sec"]["buffer"]
+    mw_len = params["timings_sec"]["mw_pulse"]
     cmdtable(shfqc.cmd_tables["J"],
              amplitude= voltToDbm(j, shfqc["J"].output.range()),
-             length=timeToSamples(buffer + read_len + buffer + read_len, samplingDivider),  # TODO: THIS LINE IS WRONG
+             length=timeToSamples(buffer + read_len + mw_len, samplingDivider),  # TODO: THIS LINE IS WRONG
              wave_index=0,
              ct_index=1,
              samplingDivider=params["timings_sec"]["sampling_divider"]
             )
 
 
-def change_mw_freq(shfqc: SHFQC, freq, params):
+def change_mw_freq(shfqc: SHFQC, params):
     """Change the ESR chirp frequency by uploading a new sequence."""
     samplingDivider = params["timings_sec"]["sampling_divider"]
     wait_and_settle = params["timings_sec"]["settle"]
@@ -744,12 +819,12 @@ def change_mw_freq(shfqc: SHFQC, freq, params):
     
     mw_amp = params["mw"]["gain"]
     mw_phase = 0 # hardcoded, don't need it changed but need it in sequence
-    mw_start_freq = freq
-    mw_stop_freq = freq + params["mw"]["span"]
+    # mw_start_freq = freq
+    # mw_stop_freq = freq + params["mw"]["span"]
 
     seqc_program_mw = f"""
     // Assign a single channel waveform to wave table entry 0
-    wave w_mw = chirp({timeToSamples(mw_len, params["mw"]["sampling_divider"])}, {mw_amp}, {mw_start_freq}, {mw_stop_freq}, {mw_phase});
+    wave w_mw = ones({timeToSamples(mw_len, params["mw"]["sampling_divider"])});
     assignWaveIndex(1,2, w_mw, 0);
 
     // Reset the oscillator phase
@@ -775,6 +850,8 @@ def change_mw_freq(shfqc: SHFQC, freq, params):
         playZero(32);    // wait and settle
     }}
     """
+    # shfqc["MW_I"].awg.load_sequencer_program(seqc_program_mw)
+    # shfqc["MW_Q"].awg.load_sequencer_program(seqc_program_mw)
     shfqc["MW"].awg.load_sequencer_program(seqc_program_mw)
     # Make sure to reupload command tables as they are cleared whenever a sequence is loaded
 
@@ -806,9 +883,40 @@ def movemeasurement(shfqc: SHFQC, p1, p2, j, mw, params):
              wave_index=0,
              ct_index=1,
              samplingDivider=params["mw"]["sampling_divider"]
+    # cmdtable(shfqc.cmd_tables["MW_I"],
+    #          amplitude=mw,
+    #          length=timeToSamples(params["timings_sec"]["mw_pulse"], params["mw"]["sampling_divider"]),
+    #          wave_index=0,
+    #          ct_index=1,
+    #          samplingDivider=params["mw"]["sampling_divider"]
+    #         )
+    # cmdtable(shfqc.cmd_tables["MW_Q"],
+    #          amplitude=mw,
+    #          length=timeToSamples(params["timings_sec"]["mw_pulse"], params["mw"]["sampling_divider"]),
+    #          wave_index=0,
+    #          ct_index=1,
+    #          samplingDivider=params["mw"]["sampling_divider"]
             )
     move_j_measurement(shfqc, j, params)
 
+def upload_dummy_sequence(shfqc: SHFQC, mw, params):
+    """Modify the command tables of P1/P2/J to measure the next appropriate datapoint. mw in au not dB"""
+    samplingDivider = params["timings_sec"]["sampling_divider"]
+
+    cmdtable(shfqc.cmd_tables["MW"],
+             amplitude=mw,
+             length=timeToSamples(params["timings_sec"]["mw_pulse"], params["mw"]["sampling_divider"]),
+             wave_index=0,
+             ct_index=1,
+             samplingDivider=params["mw"]["sampling_divider"]
+            )
+    # cmdtable(shfqc.cmd_tables["MW_Q"],
+    #          amplitude=mw,
+    #          length=timeToSamples(params["timings_sec"]["mw_pulse"], params["mw"]["sampling_divider"]),
+    #          wave_index=0,
+    #          ct_index=1,
+    #          samplingDivider=params["mw"]["sampling_divider"]
+    #         )
 
 ###### EXPERIMENTS ######
 
@@ -859,8 +967,9 @@ def run_esr_experiment(shfqc: SHFQC):
     shfqc["J"].awg.enable_sequencer(single=True)  # dont want to repeat
     shfqc["P1"].awg.enable_sequencer(single=True)
     shfqc["P2"].awg.enable_sequencer(single=True)
-    shfqc["ST"].awg.enable_sequencer(single=True)
     shfqc["MW"].awg.enable_sequencer(single=True)
+    # shfqc["MW_I"].awg.enable_sequencer(single=True)
+    # shfqc["MW_Q"].awg.enable_sequencer(single=True)
 
     # start triggering sequence (which starts each sequencer)
     shfqc.device.system.internaltrigger.enable(1)
@@ -886,6 +995,51 @@ def run_esr_experiment(shfqc: SHFQC):
 
     # return np.mean(results.reshape((seq_averages, 2)), axis=0)
     return results
+
+def run_dummy_sequence(shfqc: SHFQC):
+    """Run one ESR freqq sweep experiment. Returns the reference and measurement points."""
+    shfqc.device.system.internaltrigger.enable(0)
+    time.sleep(1)
+
+    # result_node = shfqc["measure"].spectroscopy.result.data.wave
+    # result_node.subscribe()
+
+    # shfqc["measure"].spectroscopy.result.enable(1)  # start logger
+
+    # # start sequencers
+    # shfqc["measure"].generator.enable_sequencer(single=True)
+    # shfqc["J"].awg.enable_sequencer(single=True)  # dont want to repeat
+    # shfqc["P1"].awg.enable_sequencer(single=True)
+    # shfqc["P2"].awg.enable_sequencer(single=True)
+    # shfqc["ST"].awg.enable_sequencer(single=True)
+    # shfqc["MW_I"].awg.enable_sequencer(single=True)
+    shfqc["MW"].awg.enable_sequencer(single=True)
+    time.sleep(1)
+
+    # start triggering sequence (which starts each sequencer)
+    shfqc.device.system.internaltrigger.enable(1)
+    time.sleep(0.2)
+
+    # wait for the measurement to complete
+    wait_for_internal_trigger(shfqc, progress=True, leave=False)
+    # device.system.internaltrigger. .wait_for_state_change(1.0, timeout=100)  # wait for completion
+
+    # Don't check if sequencers have finished as they say they haven't finished... but they really have
+    #check_sequencers_finished(shfqc, ["measure", "P1", "P2"])
+
+    # wait for completion
+    # while shfqc["measure"].spectroscopy.result.enable() != 0:
+    #     shfqc["measure"].spectroscopy.result.enable.wait_for_state_change(0, timeout=100)
+
+    # # get results
+    # results = get_results(shfqc, result_node, timeout=5)
+    # result_node.unsubscribe()
+
+    # # verify results
+    # #check_all_results_acquired(shfqc, len(results))
+
+    # # return np.mean(results.reshape((seq_averages, 2)), axis=0)
+    # return results
 
 
 def run_hyper_psb_experiment(shfqc: SHFQC):
