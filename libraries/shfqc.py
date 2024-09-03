@@ -69,3 +69,17 @@ class SHFQC:
     def __setitem__(self, key, value):
         raise KeyError("These values are immutable.")
 
+    def desync(self):
+        """Descync all channels. Otherwise some measurements never start..."""
+        for i in range(6):
+            self.device.sgchannels[i].synchronization.enable(0)
+        self.device.system.internaltrigger.synchronization.enable(0)
+        self.device.qachannels[0].synchronization.enable(0)
+
+    def reset(self):
+        """
+        Reset the device.
+            - Clear all sequencer programs
+            - Disable all outputs
+        """
+        pass
