@@ -15,7 +15,7 @@ from monty import Monty
 from qcodes.instrument_drivers.stanford_research.SR860 import SR860
 from liveplot import LivePlot
 import numpy as np
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 import time
 import matplotlib.pyplot as plt
 

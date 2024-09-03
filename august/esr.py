@@ -652,7 +652,7 @@ def setup_command_tables(shfqc: SHFQC, params):
                  ct_index=0,
                  samplingDivider=params["timings_sec"]["sampling_divider"]
                  )
-    upload_command_tables(shfqc)
+    #upload_command_tables(shfqc)
 
 
 def setup_hyper_command_tables(shfqc: SHFQC, params):
@@ -976,7 +976,7 @@ def run_esr_experiment(shfqc: SHFQC):
     time.sleep(0.2)
 
     # wait for the measurement to complete
-    wait_for_internal_trigger(shfqc, progress=True, leave=False)
+    wait_for_internal_trigger(shfqc, progress=False, leave=False)
     # device.system.internaltrigger. .wait_for_state_change(1.0, timeout=100)  # wait for completion
 
     # Don't check if sequencers have finished as they say they haven't finished... but they really have
