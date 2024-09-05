@@ -537,10 +537,13 @@ def cmdtable(ct, amplitude, length, wave_index, ct_index, samplingDivider):
     ct.table[ct_index].waveform.samplingRateDivider = samplingDivider  # inherit global
 
 
-def upload_command_tables(shfqc: SHFQC):
+def upload_command_tables(shfqc: SHFQC, chans=None):
     """Upload the command tables to the device"""
     # Upload the command tables
-    for c in shfqc.cmd_tables.keys():
+    if chans is None:
+        chans = shfqc.cmd_tables.keys()
+    
+    for c in chans:
         shfqc[c].awg.commandtable.upload_to_device(shfqc.cmd_tables[c])
 
 
@@ -595,7 +598,7 @@ def setup_hyper_command_tables(shfqc: SHFQC, params):
                 )
 
     # Constant J pulse for the experiment. Upload in move_j_measurement
-    upload_command_tables(shfqc)
+    #upload_command_tables(shfqc)
 
 
 ###### RUN ######
@@ -823,7 +826,7 @@ def run_hyper_psb_experiment(shfqc: SHFQC):
     shfqc["J"].awg.enable_sequencer(single=True)  # dont want to repeat
     shfqc["P1"].awg.enable_sequencer(single=True)
     shfqc["P2"].awg.enable_sequencer(single=True)
-    shfqc["ST"].awg.enable_sequencer(single=True)
+    #shfqc["ST"].awg.enable_sequencer(single=True)
 
     # start triggering sequence (which starts each sequencer)
     shfqc.device.system.internaltrigger.enable(1)

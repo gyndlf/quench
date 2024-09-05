@@ -595,7 +595,7 @@ def setup_hyper_command_tables(shfqc: SHFQC, params):
                 )
 
     # Constant J pulse for the experiment. Upload in move_j_measurement
-    upload_command_tables(shfqc)
+    #upload_command_tables(shfqc)
 
 
 ###### RUN ######
