@@ -15,6 +15,9 @@ from tqdm.notebook import tqdm
 from zhinst.toolkit import Session, CommandTable, Sequence, Waveforms, SHFQAChannelMode
 from shfqc import SHFQC
 
+# Relative imports 
+from converter import autodb, autodeg, volt_to_arbitrary, timeToSamples, max_volt
+
 
 """
 The dynamic variables used throughout should be initialised in jupyter and passed to each function
@@ -72,41 +75,6 @@ def validate(params):
     MAX_MEASUREMENTS = 2**19
     if params["averaging"]["seqc_averages"] > MAX_MEASUREMENTS:
         raise OverflowError("Requested too many points to be measured. (Use around 500,000 points)")
-
-
-def timeToSamples(time, samplingRateDivider):
-    """Returns the number of samples divisible by 16 given a time (in seconds) and sampling rate divider"""
-    samples_raw = time * (1/(2**samplingRateDivider))/0.5e-9
-    #samples_modulo = int(samples_raw) % 16
-    #samples = int(samples_raw) - int(samples_modulo)
-    return 16*int(np.floor(samples_raw/16))
-    #return samples
-
-
-def voltToDbm(volt, dbmrange):
-    """Convert from voltage to dBm (power)"""
-    # Ok yes this can be better, deal with it
-    if dbmrange != 0:
-        raise Exception("This function only works with a dBm range of 0.")
-
-    if volt > 0.34 or volt < -0.34:
-        raise ValueError(f"Given voltage ({volt} V) is greater than max output of SHFQC (0.34 V)")
-
-    if volt < 0:
-        amplitude = 1 / 300 * (np.sqrt(3e5 * -volt + 529) - 23)
-        return -amplitude
-    else:
-        amplitude = 1 / 300 * (np.sqrt(3e5 * volt + 529) - 23)
-        return amplitude
-
-
-def autodb(res):
-    """Change a.u. to dB power. Used in the data result."""
-    return 10*np.log10(np.abs(res)**2/50*1000)
-
-def autodeg(res):
-    """Change a.u. result to phase angle in degrees."""
-    return np.unwrap(np.angle(res))  # FIXME: Add axis=?
 
 
 # NEED TO CHANGE THIS. ESR CHANNEL NEEDS TO BE IN RF MODE WITH A ~6GHZ CENTER FREQ
@@ -380,11 +348,11 @@ def setupsequencers(shfqc: SHFQC, params, print_programs=True):
     ramp_rate = params["amplitude_volts"]["ramp_rate"]
     # Create mixed state
     samples = timeToSamples(init_len, samplingDivider)
-    #mixed_p = np.linspace(voltToDbm(0.34 - 0.34 * samples * ramp_rate, 0), voltToDbm(0.34, 0), samples) # ramps
-    mixed_p = np.linspace(voltToDbm(0.34, 0), voltToDbm(0.34, 0), samples)  # no ramping
+    #mixed_p = np.linspace(volt_to_arbitrary(0.34 - 0.34 * samples * ramp_rate, 0), volt_to_arbitrary(0.34, 0), samples) # ramps
+    mixed_p = np.linspace(volt_to_arbitrary(0.34, 0), volt_to_arbitrary(0.34, 0), samples)  # no ramping
     # Read pulse driver
     samples = timeToSamples(read_len, samplingDivider)
-    read_p = np.linspace(voltToDbm(0.34 - 0.34 * samples * ramp_rate, 0), voltToDbm(0.34, 0), samples)
+    read_p = np.linspace(volt_to_arbitrary(0.34 - 0.34 * samples * ramp_rate, 0), volt_to_arbitrary(0.34, 0), samples)
 
     # Upload to sequencers
     # P1
@@ -531,11 +499,11 @@ def setup_hyper_sequencers(shfqc: SHFQC, params, print_programs=False):
     ramp_rate = params["amplitude_volts"]["ramp_rate"]
     # Create mixed state
     samples = timeToSamples(init_len, samplingDivider)
-    #mixed_p = np.linspace(voltToDbm(0.34 - 0.34 * samples * ramp_rate, 0), voltToDbm(0.34, 0), samples) # ramps
-    mixed_p = np.linspace(voltToDbm(0.34, 0), voltToDbm(0.34, 0), samples)  # no ramping
+    #mixed_p = np.linspace(volt_to_arbitrary(0.34 - 0.34 * samples * ramp_rate, 0), volt_to_arbitrary(0.34, 0), samples) # ramps
+    mixed_p = np.linspace(volt_to_arbitrary(0.34, 0), volt_to_arbitrary(0.34, 0), samples)  # no ramping
     # Read pulse driver
     samples = timeToSamples(read_len, samplingDivider)
-    read_p = np.linspace(voltToDbm(0.34 - 0.34 * samples * ramp_rate, 0), voltToDbm(0.34, 0), samples)
+    read_p = np.linspace(volt_to_arbitrary(0.34 - 0.34 * samples * ramp_rate, 0), volt_to_arbitrary(0.34, 0), samples)
 
     # Upload to sequencers
     # P1
@@ -646,7 +614,7 @@ def setup_command_tables(shfqc: SHFQC, params):
     """Set up the command tables. Give current command tables"""
     for c in ["P1", "P2"]:
         cmdtable(shfqc.cmd_tables[c],
-                 amplitude=voltToDbm(params["amplitude_volts"]["mixed_pulse"][c], params["powers"]["drive"]),
+                 amplitude=volt_to_arbitrary(params["amplitude_volts"]["mixed_pulse"][c], params["powers"]["drive"]),
                  length=timeToSamples(params["timings_sec"]["mixed_initilise"], params["timings_sec"]["sampling_divider"]),
                  wave_index=0,
                  ct_index=0,
@@ -665,7 +633,7 @@ def setup_hyper_command_tables(shfqc: SHFQC, params):
     # Setup mixed pulse
     for c in ["P1", "P2"]:
         cmdtable(shfqc.cmd_tables[c],
-                 amplitude=voltToDbm(params["amplitude_volts"]["mixed_pulse"][c], params["powers"]["drive"]),
+                 amplitude=volt_to_arbitrary(params["amplitude_volts"]["mixed_pulse"][c], params["powers"]["drive"]),
                  length=timeToSamples(params["timings_sec"]["mixed_initilise"], params["timings_sec"]["sampling_divider"]),
                  wave_index=0,
                  ct_index=0,
@@ -678,14 +646,14 @@ def setup_hyper_command_tables(shfqc: SHFQC, params):
     ct_indexs = np.arange(1, params["averaging"]["num_detuning"]+1)
     for (ct, p1, p2) in zip(ct_indexs, p1_steps, p2_steps):
         cmdtable(shfqc.cmd_tables["P1"],
-                amplitude=voltToDbm(p1, shfqc["P1"].output.range()),
+                amplitude=volt_to_arbitrary(p1, shfqc["P1"].output.range()),
                 length=timeToSamples(read_pulse_time, samplingDivider),
                 wave_index=1,
                 ct_index=int(ct),
                 samplingDivider=params["timings_sec"]["sampling_divider"]
                 )
         cmdtable(shfqc.cmd_tables["P2"],
-                amplitude=voltToDbm(p2, shfqc["P2"].output.range()),
+                amplitude=volt_to_arbitrary(p2, shfqc["P2"].output.range()),
                 length=timeToSamples(read_pulse_time, samplingDivider),
                 wave_index=1,
                 ct_index=int(ct),
@@ -784,7 +752,7 @@ def calculate_feedback(shfqc: SHFQC, last_point, params):
 
     # update command table
     cmdtable(shfqc.cmd_tables["ST"],
-             amplitude= voltToDbm(st_corr, params["powers"]["drive"]),
+             amplitude= volt_to_arbitrary(st_corr, params["powers"]["drive"]),
              length=timeToSamples(params["timings_sec"]["trigger"]-2e-3, 9),  # TODO: Remove constant
              wave_index=0,
              ct_index=0,
@@ -800,7 +768,7 @@ def move_j_measurement(shfqc: SHFQC, j, params):
     buffer = params["timings_sec"]["buffer"]
     mw_len = params["timings_sec"]["mw_pulse"]
     cmdtable(shfqc.cmd_tables["J"],
-             amplitude= voltToDbm(j, shfqc["J"].output.range()),
+             amplitude= volt_to_arbitrary(j, shfqc["J"].output.range()),
              length=timeToSamples(buffer + read_len + mw_len, samplingDivider),  # TODO: THIS LINE IS WRONG
              wave_index=0,
              ct_index=1,
@@ -864,14 +832,14 @@ def movemeasurement(shfqc: SHFQC, p1, p2, j, mw, params):
     buffer = params["timings_sec"]["buffer"]
 
     cmdtable(shfqc.cmd_tables["P1"],
-             amplitude=voltToDbm(p1, shfqc["P1"].output.range()),
+             amplitude=volt_to_arbitrary(p1, shfqc["P1"].output.range()),
              length=timeToSamples(buffer + read_len + buffer, samplingDivider),
              wave_index=1,
              ct_index=1,
              samplingDivider=params["timings_sec"]["sampling_divider"]
             )
     cmdtable(shfqc.cmd_tables["P2"],
-             amplitude=voltToDbm(p2, shfqc["P2"].output.range()),
+             amplitude=volt_to_arbitrary(p2, shfqc["P2"].output.range()),
              length=timeToSamples(buffer + read_len + buffer, samplingDivider),
              wave_index=1,
              ct_index=1,

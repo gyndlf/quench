@@ -87,6 +87,7 @@ def timeToSamples(time, samplingRateDivider):
 def voltToDbm(volt, dbmrange):
     """Convert from voltage to dBm (power)"""
     # Ok yes this can be better, deal with it
+    raise Exception("this is wrong. use new formulas")
     if dbmrange != 0:
         raise Exception("This function only works with a dBm range of 0.")
 
