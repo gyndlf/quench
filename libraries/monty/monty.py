@@ -7,9 +7,11 @@ Data saver using pickle and LZMA
 @author: jzingel
 """
 
+
 import lzma
 import pickle
 import os
+import sys
 from datetime import datetime
 import yaml
 import logging
@@ -56,13 +58,30 @@ class Monty:
         self.runname = ""
         self.start_time = datetime.min  # stand in
         self.parameters = {}  # run parameters (values sweeping, etc)
+
+        # Setup loggers
+        formatter = logging.Formatter("%(asctime)s %(levelname)s. %(message)s")
+
+        stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setFormatter(formatter)
+        logger_std = logging.getLogger("monty")  # Outputs to the STDOUT
+        logger_std.setLevel(logging.INFO)
+        logger_std.addHandler(stream_handler)
+
+        file_handler = logging.FileHandler(os.path.join(DATA_DIR, "logs", "monty.log"), mode="a")
+        file_handler.setFormatter(formatter)
+        logger_file = logging.getLogger("fmonty")
+        logger_file.setLevel(logging.INFO)
+        logger_file.addHandler(file_handler)
+        self.logger = logger_std
+        self.flogger = logger_file
         
         # Attempt to load the experiment if it already exists
         if os.path.exists(os.path.join(DATA_DIR, identifier.replace(".", "/").replace(" ", "_"), "experiment.yaml")):
-            print("Loading existing experiment (ignoring given experiment parameters)")
+            self.logger.info("Loading existing experiment (ignoring given experiment parameters)")
             self.loadexperiment()
         else:
-            print(f"Started new experiment {self.identifier}")
+            self.logger.info(f"Started new experiment {self.identifier}")
 
     @property
     def plot_title(self):
@@ -125,11 +144,11 @@ class Monty:
         if data is not None:
             self.data = data
         self.finishrun()
-        print(f"Saving to {self.runname}.xz")
+        self.logger.info(f"Saving to {self.runname}.xz")
         path, repeat = self._find_unused_filename(os.path.join(self.root, self.runname), "xz")
         self.datafiles.append(self.runname + (("." + str(repeat)) if repeat > 0 else "") + ".xz")
         self._save_data(path, self.runname)
-        print("Saving to experiment.yaml")
+        self.logger.info("Saving to experiment.yaml")
         self._save_experiment()
 
     def snapshot(self, data=None):
@@ -139,7 +158,7 @@ class Monty:
         Will overwrite existing files so use with care. Needs a current run to be active.
         """
         if not self.isrunrunning:
-            print("WARNING: Tried to snapshot data without a current run being active. Silently failing...")
+            self.logger.warning("WARNING: Tried to snapshot data without a current run being active. Silently failing...")
             return
         if data is not None:
             self.data = data
@@ -161,7 +180,7 @@ class Monty:
         """Create a new run for the experiment."""
         name = name.replace(" ", "_")
         if self.isrunrunning:
-            print("WARNING: Finishing existing run to start a new one")
+            self.flogger.warning("WARNING: Finishing existing run to start a new one")
             self.finishrun()
 
         name_adj = name  # adjust with numbers for repeating runs
@@ -177,14 +196,15 @@ class Monty:
         self.parameters = parameters
         self.figures = []
         self.datafiles = []
-        print(f"Started new run {self.runname}")
+        self.logger.info(f"Started new run {self.runname}")
+        self.flogger.info(f"Run {self.runname} started")
         self._save_experiment()
 
     def finishrun(self):
         """Add the finished run to the list of runs."""
         self.isrunrunning = False
         if self.runname in self.runs.keys():
-            print(f"WARNING: Overwriting run {self.runname}")
+            self.logger.warning(f"WARNING: Overwriting run {self.runname}")
         self.runs[self.runname] = {
             "runid": self.runid,
             "time_start": str(self.start_time),
@@ -195,7 +215,8 @@ class Monty:
         }
         if self.runname not in self.run_map:  # dont add duplicates when rerunning runs
             self.run_map.append(self.runname)
-        print(f"Run finished and took {str(datetime.now() - self.start_time)}.")
+        self.flogger.info(f"Run {self.runname} ended")
+        self.logger.info(f"Run finished and took {str(datetime.now() - self.start_time)}.")
 
     def loadrun(self, runname: str):
         """Load specific run of data."""
@@ -205,21 +226,21 @@ class Monty:
         path = os.path.join(self.root, runname + ".xz")
         if not os.path.exists(path):
             raise OSError(f"ERROR: File doesn't exist '{path}'")
-        print(f"Loading '{path}'")
+        self.logger.info(f"Loading '{path}'")
         with lzma.open(path, "r") as fz:
             data = pickle.load(fz)
             if data["version"] != VERSION:
-                print("WARNING: Saved object does not match current Monty version")
+                self.logger.warning("WARNING: Saved object does not match current Monty version")
             if data["runname"] != runname:
                 print(f'{data["runname"]}')
-                print(f"WARNING: File runname ({data['runname']}) does not match requested run name {runname}")
+                self.logger.warning(f"WARNING: File runname ({data['runname']}) does not match requested run name {runname}")
             self.data = data["data"]
         # Configure internal variables to point to loaded data
         self.runname = data["runname"]
         try:
             self.parameters = self.runs[self.runname]
         except KeyError:
-            logging.warn("Loaded run is not found in experiment parameter list.")
+            self.logger.warning("Loaded run is not found in experiment parameter list.")
         return self.data
 
     def loadexperiment(self, identifier: str = None):
@@ -239,7 +260,7 @@ class Monty:
 
         # set values from experiment
         if experiment["version"] != VERSION:
-            print(f"WARNING: Experiment version {experiment['version']} does not match current monty version {VERSION}")
+            self.logger.warning(f"WARNING: Experiment version {experiment['version']} does not match current monty version {VERSION}")
         self.identifier = experiment["identifier"]
         self.experiment = experiment["experiment"]
         self.run_map = experiment["runs"]
@@ -252,8 +273,8 @@ class Monty:
                 if self.runs[key]["runid"] > runid:
                     runid = self.runs[key]["runid"]
         self.runid = runid
-        print("Note that no experimental data has been loaded.")
-        print(f"Next run will have id {self.runid}")
+        self.logger.warning("Note that no experimental data has been loaded.")
+        self.logger.info(f"Next run will have id {self.runid}")
         return self
     
     def loaddata(self, fname: str):
@@ -263,17 +284,16 @@ class Monty:
         path = os.path.join(self.root, fname)
         if not os.path.exists(path):
             raise OSError(f"ERROR: File doesn't exist '{path}'")
-        print(f"Loading '{path}'")
+        self.logger.info(f"Loading '{path}'")
         with lzma.open(path, "r") as fz:
             data = pickle.load(fz)
             if data["version"] != VERSION:
-                print("WARNING: Saved object does not match current Monty version")
+                self.logger.warning("WARNING: Saved object does not match current Monty version")
             self.data = data["data"]
             self.parameters = data["info"]
             self.runname = data["runname"]
-            print(f"Loaded data with run name {data['runname']}")
+            self.logger.info(f"Loaded data with run name {data['runname']}")
         return self.data
-
 
         
 

@@ -10,7 +10,7 @@ Monty library for saving and loading data quickly
 from .monty import Monty
 from .monty11 import Monty as Monty11  # v1.1
 
-__version__ = 1.2
+__version__ = 1.3
 
 __all__ = [Monty, Monty11]
 
