@@ -60,7 +60,7 @@ class Monty:
         self.parameters = {}  # run parameters (values sweeping, etc)
 
         # Setup loggers
-        formatter = logging.Formatter("%(asctime)s %(levelname)s. %(message)s")
+        formatter = logging.Formatter("[%(asctime)s] %(levelname)s %(message)s")
 
         stream_handler = logging.StreamHandler(sys.stdout)
         stream_handler.setFormatter(formatter)
@@ -197,7 +197,7 @@ class Monty:
         self.figures = []
         self.datafiles = []
         self.logger.info(f"Started new run {self.runname}")
-        self.flogger.info(f"Run {self.runname} started")
+        self.flogger.info(f"Run {self.identifier + '.' + self.runname} started")
         self._save_experiment()
 
     def finishrun(self):
@@ -215,7 +215,7 @@ class Monty:
         }
         if self.runname not in self.run_map:  # dont add duplicates when rerunning runs
             self.run_map.append(self.runname)
-        self.flogger.info(f"Run {self.runname} ended")
+        self.flogger.info(f"Run {self.identifier + '.' + self.runname} ended")
         self.logger.info(f"Run finished and took {str(datetime.now() - self.start_time)}.")
 
     def loadrun(self, runname: str):
