@@ -13,7 +13,12 @@ import os
 from datetime import datetime
 
 
-DATA_DIR = "C:\\Users\\LD2007\\Documents\\Si_CMOS_james\\measurements\\data"
+if os.name == "posix":  # mac or linux
+    print("Warning running on posix... what are you doing??")
+    # DATA_DIR = "/mnt/c/Users/LD2007/Documents/Si_CMOS_james/measurements/data"
+    DATA_DIR = "/Users/james/Documents/Backups/honours-quench-data"
+else:  # Windows (Probably LD fridge)
+    DATA_DIR = "C:\\Users\\LD2007\\Documents\\Si_CMOS_james\\data"
 VERSION = 1.1
 
 # TODO
