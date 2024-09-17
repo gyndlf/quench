@@ -18,7 +18,7 @@ from qcodes_measurements.device import Device, Gate
 
 
 class Retort:
-    def __init__(self, target, stepsize=5e-4, tol=1e-11, slope="up", bounds=(3.3, 3.8)):
+    def __init__(self, target, stepsize=5e-4, tol=1e-11, slope="up", bounds=(3.0, 3.8)):
         """Setup the feedback parameters"""
         self.target = target
         self.stepsize = stepsize
