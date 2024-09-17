@@ -37,8 +37,9 @@ def plotsweep1d(X: np.ndarray, Y: np.ndarray, gate_name: str, monty: Monty=None)
 
     
     
-def plotsweep2d(X1: np.ndarray, X2: np.ndarray, Y: np.ndarray, 
-                gate1_name: str, gate2_name: str, monty: Monty = None):
+def plotsweep2d(X1: np.ndarray, X2: np.ndarray, Y: np.ndarray,
+                gate1_name: str, gate2_name: str, monty: Monty = None,
+                extra_title: str = ""):
     """
     Plot a 2D sweep.
     Assumes that X1 and X2 have the same shape (when meshed) as Y
@@ -50,7 +51,7 @@ def plotsweep2d(X1: np.ndarray, X2: np.ndarray, Y: np.ndarray,
     plt.ylabel(f"{gate1_name} gate voltage (V)")
     plt.xlabel(f"{gate2_name} gate voltage (V)")
     if monty is not None:
-        plt.title(monty.identifier + "." + monty.runname)
+        plt.title(monty.identifier + "." + monty.runname + extra_title)
         monty.savefig(plt, "2D")
     else:
         print("WARNING: Plotting but no monty object specified. Some things may break")
