@@ -31,7 +31,7 @@ def autodb(res):
 
 def autodeg(res):
     """Change a.u. result to phase angle in degrees."""
-    return np.unwrap(np.angle(res))  # FIXME: Add axis=
+    return np.unwrap(np.angle(res))
 
 
 def save_plot(fname, ftype=None):
