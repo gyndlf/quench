@@ -118,3 +118,19 @@ def connect_to_gb(mdac):
     #Gooseberry = gb_mod.Gooseberry
     
     return Gooseberry(gb_raw)
+
+
+
+def link_j_on_gb(mdac, gb_control_si):
+    """Link J1 and J2 on gooseberry to share the same voltages"""
+    print('Ramping J1 down to 0V')
+    mdac.ch05.ramp(0, 0.05)
+    mdac.ch05.block()
+    
+    print('Coupling J1, J2 together')
+    gb_control_si.disable_all_gates()
+    gb_control_si.enable_multiple_gates([18, 20])
+    
+    print('Ramping J1, J2 to loading values')
+    mdac.ch05.ramp(3.5, 0.05)
+    mdac.ch05.block()
