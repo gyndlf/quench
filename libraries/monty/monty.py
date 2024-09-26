@@ -264,7 +264,11 @@ class Monty:
             self.logger.warning(f"WARNING: Experiment version {experiment['version']} does not match current monty version {VERSION}")
         self.identifier = experiment["identifier"]
         self.experiment = experiment["experiment"]
-        self.run_map = experiment["runs"]
+        try:
+            self.run_map = experiment["runs"]
+        except KeyError:
+            self.logger.error(f"Could not find run map for the experiment. Running future runs will corrupt the file. Only proceed with loading data.")
+            return self
         
         runid = 0
         self.runs = {}
