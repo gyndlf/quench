@@ -122,6 +122,12 @@ def naive_detuning_1d():
     Y = result["R"] * 1e12
     oned_plot(X, Y, xlabel=DETUNING, ylabel="Current (pA)", fname="naive_detuning")
 
+    monty = Monty("sam.load_e2")
+    result = monty.loaddata("P1_scan.7")
+    X = np.linspace(2.1, 1.75, 600)
+    Y = result["R"] * 1e12
+    oned_plot(X, Y, xlabel=DETUNING, ylabel="Current (pA)", fname="without_feedback")
+
 
 def detuning_1d():
     monty = Monty("dc.power_recovery")
@@ -158,6 +164,22 @@ def isolated_mode_2d():
     X = np.linspace(-0.75, 0.75, 200)
     twod_plot(X, Y, R, "$P_1 - P_2$ (V)", "$J$ (V)", "Current (pA)", "isolated_dots")
 
+    monty = Monty("summary.dc_detuning")
+    result = monty.loaddata("detuning_vs_J.2")
+    R = result["R"][::2, :] * 1e12
+    Y = np.linspace(2.9, 3.8, 101)[::-2]
+    dd = (2.1-1.625)/np.sqrt(2)
+    X = np.linspace(-dd, dd, 401)
+    twod_plot(X, Y, R, "$P_1 - P_2$ (V)", "$J$ (V)", "Current (pA)", "4_isolated_dots")
+
+    monty = Monty("summary.dc_detuning")
+    result = monty.loaddata("detuning_vs_J.10")
+    R = result["R"][::2, :] * 1e12
+    Y = np.linspace(3.3, 3.6, 201)[::2]
+    dd = 0.1
+    X = np.linspace(-dd, dd, 501)
+    twod_plot(X, Y, R, "$P_1 - P_2$ (V)", "$J$ (V)", "Current (pA)", "2_isolated_dots")
+
 
 def pauli_spin_blockade():
     monty = Monty("rf.psb_best")
@@ -178,6 +200,25 @@ def pauli_spin_blockade():
     plot_amp_phase(X, d_amp, d_phase, "$P_1 - P_2$ (mV)", "1d_pauli")
 
 
+def coulomb_in_rf():
+    monty = Monty("rf.set_testing")
+    result = monty.loadrun("rf_ST_sweep.9")
+    data = result["data"]
+    amp = autodb(data)
+    phase = autodeg(data)
+    X = np.linspace(0, -0.4, 401) * 1e3
+    plot_amp_phase(X, amp, phase, "SET Plunger (mV)", "rf_coulomb")
+
+
+def impedance_network():
+    monty = Monty("rf.set_testing")
+    data = monty.loadrun("spectroscopy")["data"]
+    amp = autodb(data)
+    phase = autodeg(data)
+    X = np.linspace(300, 500, 401)
+    plot_amp_phase(X, amp, phase, "Impedance frequency (MHz)", "impedance_network")
+
+
 def coulomb_diamonds():
     monty = Monty("summary.dc_detuning")
     result = monty.loaddata("coulomb_diamond.23")
@@ -185,6 +226,14 @@ def coulomb_diamonds():
     Y = np.linspace(-0.01, 0.01, 201)[::2] * 1e3
     X = np.linspace(3.6, 3.7, 501)
     twod_plot(X, Y, R, "Plunger gate (V)", "Bias (mV)", "Current (pA)", "diamond")
+
+
+def fake():
+    x,y = (400, 400)
+    R = np.linspace(0, 0.02, x*y).reshape((y,x))
+    J = np.linspace(3.35, 3.77, y)
+    det = np.linspace(0, -0.006, x)
+    twod_plot(det, J, R, DETUNING, "J (V)", "Amplitude (dBm)", "psb_fake")
 
 
 ## Run everything ##
@@ -197,6 +246,9 @@ def main():
     isolated_mode_2d()
     pauli_spin_blockade()
     coulomb_diamonds()
+    coulomb_in_rf()
+    impedance_network()
+    fake()
 
 
 if __name__ == "__main__":
