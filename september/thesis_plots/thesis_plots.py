@@ -38,7 +38,7 @@ def save_plot(fname, ftype=None):
     ftype = ftype if ftype is not None else default_ftype
     path = os.path.join('figures', fname + ftype)
     print(f"Saved to {path}")
-    plt.savefig(path)
+    plt.savefig(path, bbox_inches='tight')
 
 
 def plot_amp_phase(X, amp, phase, xlabel="P1 voltage", fname="fname"):
@@ -236,6 +236,70 @@ def fake():
     twod_plot(det, J, R, DETUNING, "J (V)", "Amplitude (dBm)", "psb_fake")
 
 
+def ramping():
+    # Print the ramping rates
+    monty = Monty("rf.decay")
+    result = monty.loadrun("p1_decay.119")
+    data = result["data"]
+    gX = np.linspace(0, 0.0008, 30)[:30-10-5] * 1e3
+    gamp = autodb(data)[5:30-10]
+
+    monty = Monty("rf.decay")
+    result = monty.loadrun("p1_decay.93")
+    data = result["data"]
+    wX = np.linspace(0, 0.002, 30)[:30-10-5] * 1e3
+    wamp = autodb(data)[5:30-10]
+
+    # sync data to align
+    gamp -= gamp[0]
+    wamp -= wamp[0]
+    print(monty.parameters)
+
+    fig, ax = plt.subplots()
+    ax.plot(gX, gamp, ".", color=default_color, label="Ramp = 0.13 mV/s")
+    ax.plot(wX, wamp, ".", label="Ramp = 0 V/s")
+    ax.set_xlabel("Time (ms)")
+    ax.set_ylabel("RF signal (a.b. units)")
+    plt.legend()
+    plt.tight_layout()
+    fig.patch.set_alpha(0.0)  # transparent axes
+    save_plot("ramping")
+
+
+def coulomb_rf_power_sweep():
+    # Plot the power sweep version of coulomb blockade
+    monty = Monty("rf.set_testing")
+    result = monty.loadrun("pwr_set_sweep.15")
+    data = result["data"]
+
+    print(monty.parameters)
+    print(data.keys())
+
+    X = np.linspace(-0.5, 0.5, 401)
+
+    fig, (ax0, ax1) = plt.subplots(nrows=2, sharex=True)
+
+    colors = default_cmap(np.linspace(0, 1, 8))
+
+    for (i, k) in enumerate(data.keys()):
+        if k != "-30":
+            amp = autodb(data[k]) - int(k)
+            phase = autodeg(data[k])
+            ax0.plot(X, amp, "-", color=colors[i], label=k)
+            ax1.plot(X, phase, "-", color=colors[i])
+
+    #ax0.legend(loc='center left', bbox_to_anchor=(1.04, 0.0),
+              #ncol=1, fancybox=True, shadow=False)
+    fig.legend(loc='outside center right', bbox_to_anchor=(1.08, 0.5), title="Power (dBm)")
+
+    ax0.set_ylabel("Amplitude (dBm)")
+    ax1.set_ylabel("Phase (deg)")
+    ax1.set_xlabel(ST)
+    fig.align_ylabels([ax0, ax1])
+    #plt.tight_layout()
+    fig.patch.set_alpha(0.0)  # transparent axes
+    save_plot("rf_coulomb_pwr_sweep")
+
 ## Run everything ##
 
 
@@ -249,6 +313,8 @@ def main():
     coulomb_in_rf()
     impedance_network()
     fake()
+    ramping()
+    coulomb_rf_power_sweep()
 
 
 if __name__ == "__main__":
