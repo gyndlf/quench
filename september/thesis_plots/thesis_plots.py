@@ -20,7 +20,9 @@ default_color_2 = "green"
 default_cmap = mpl.colormaps["viridis"]
 
 ST = "Plunger $\\phi_S$ (V)"
+STm = "Plunger $\\phi_S$ (mV)"
 DETUNING = "Dot detuning $\\phi_1 - \\phi_2$ (V)"
+DETUNINGm = "Dot detuning $\\phi_1 - \\phi_2$ (mV)"
 J = "Interaction gate $\\beta_1$ (V)"
 
 ## Common functions ##
@@ -194,11 +196,13 @@ def pauli_spin_blockade():
     mes_amp = autodb(mes)
     mes_phase = autodeg(mes)  # add axis for unwrap?
 
+    print(monty.parameters)
+
     # X axis (p1_steps)
     X = np.linspace(0, -0.006, 1001) * 1e3
     d_phase = mes_phase - ref_phase
     d_amp = mes_amp - ref_amp
-    plot_amp_phase(X, d_amp, d_phase, "$P_1 - P_2$ (mV)", "1d_pauli")
+    plot_amp_phase(X, d_amp, d_phase, DETUNINGm, "1d_pauli")
 
 
 def coulomb_in_rf():
@@ -208,7 +212,7 @@ def coulomb_in_rf():
     amp = autodb(data)
     phase = autodeg(data)
     X = np.linspace(0, -0.4, 401) * 1e3
-    plot_amp_phase(X, amp, phase, "SET Plunger (mV)", "rf_coulomb")
+    plot_amp_phase(X, amp, phase, STm, "rf_coulomb")
 
 
 def impedance_network():
@@ -231,10 +235,10 @@ def coulomb_diamonds():
 
 def fake():
     x,y = (400, 400)
-    R = np.linspace(0, 0.02, x*y).reshape((y,x))
-    J = np.linspace(3.35, 3.77, y)
-    det = np.linspace(0, -0.006, x)
-    twod_plot(det, J, R, DETUNING, J, "Amplitude (dBm)", "psb_fake")
+    R = np.linspace(0, 0.02, x*y).reshape((y,x)) /0.02
+    J1 = np.linspace(3.35, 3.77, y)
+    det = np.linspace(0, -0.006, x) * 1e3
+    twod_plot(det, J1, R, DETUNINGm, J, "Amplitude (a.b. units)", "psb_fake")
 
 
 def ramping():
@@ -272,9 +276,6 @@ def coulomb_rf_power_sweep():
     monty = Monty("rf.set_testing")
     result = monty.loadrun("pwr_set_sweep.15")
     data = result["data"]
-
-    print(monty.parameters)
-    print(data.keys())
 
     X = np.linspace(-0.5, 0.5, 401)
 
@@ -333,6 +334,27 @@ def fitted_feedback():
     save_plot("fitted_feedback")
 
 
+def set_overview():
+    # overview scan
+    data = loadraw("SET/overview_scans/active_region.xz")["data"]  # (101, 101)
+    R = data["R"] * 1e9
+    print(R.shape)
+    n = 101
+    Y = np.linspace(0.8, 1.8, n)
+    X = np.linspace(2.5, 4.25, n)
+    twod_plot(X, Y, R, ST, "Barrier $\\beta_{S1} = \\beta_{S2}$ (V)", "Current (pA)", "overview")
+
+    data = loadraw("SET/overview_scans/detailed_active_region_SNAPSHOT.xz")["data"]  # (1001, 1001)
+    # need to find where the data stops
+    R = data["R"] * 1e9
+    print(np.where(np.sum(R, axis=1)==0))
+    k = 312  # this is the column where the data stops.
+    n = 1001
+    Y = np.linspace(0.8, 1.8, n)[:k]
+    X = np.linspace(2.5, 4.25, n)
+    twod_plot(X, Y, R[:k, :], ST, "Barrier $\\beta_{S1} = \\beta_{S2}$ (V)", "Current (pA)", "overview_detailed")
+
+
 ## Run everything ##
 
 
@@ -352,5 +374,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-    #pauli_spin_blockade()
+    #main()
+    set_overview()
+
+
