@@ -19,8 +19,9 @@ default_color = "orange"
 default_color_2 = "green"
 default_cmap = mpl.colormaps["viridis"]
 
-ST = "SET Plunger (V)"
-DETUNING = "$P_1 - P_2$ (V)"
+ST = "Plunger $\\phi_S$ (V)"
+DETUNING = "Dot detuning $\\phi_1 - \\phi_2$ (V)"
+J = "Interaction gate $\\beta_1$ (V)"
 
 ## Common functions ##
 
@@ -83,7 +84,7 @@ def twod_plot(X, Y, Z, xlabel="x label", ylabel="y label", zlabel="z label", fna
     """Plot a simple 2D plot"""
     fig, ax = plt.subplots()
     # This may look backwards but it is the right order since I define my matrices weird
-    im = ax.pcolormesh(X, Y, Z, shading="nearest", cmap=default_cmap)
+    im = ax.pcolormesh(X, Y, Z, shading="nearest", cmap=default_cmap, rasterized=True)  # make sure to rasterize here so that the pdf engine doesn't do it wrong later
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     # ax.set_zlabel(zlabel)
@@ -91,7 +92,7 @@ def twod_plot(X, Y, Z, xlabel="x label", ylabel="y label", zlabel="z label", fna
     fig.colorbar(im, ax=ax, label=zlabel)
     plt.tight_layout()
     fig.patch.set_alpha(0.0)  # transparent axes
-    save_plot(fname, ftype=".png")
+    save_plot(fname) #, ftype=".png")
 
 
 ## Actual functions
@@ -155,14 +156,14 @@ def isolated_mode_2d():
     R = result["R"][::2, :] * 1e12
     X = np.linspace(1.75, 2.1, 200)
     Y = np.linspace(1.75, 2.1, 100)
-    twod_plot(X, Y, R, "$P_1$ (V)", "$P_2$ (V)", "Current (pA)", "double_isolated")
+    twod_plot(X, Y, R, "$\\phi_1$ (V)", "$\\phi_2$ (V)", "Current (pA)", "double_isolated")
 
     monty = Monty("double_dot.detuning")
     result = monty.loaddata("detuning_vs_J.2")
     R = result["R"][::2, :] * 1e12
     Y = np.linspace(3.0, 4.0, 150)[::-1]
     X = np.linspace(-0.75, 0.75, 200)
-    twod_plot(X, Y, R, "$P_1 - P_2$ (V)", "$J$ (V)", "Current (pA)", "isolated_dots")
+    twod_plot(X, Y, R, DETUNING, J, "Current (pA)", "isolated_dots")
 
     monty = Monty("summary.dc_detuning")
     result = monty.loaddata("detuning_vs_J.2")
@@ -170,7 +171,7 @@ def isolated_mode_2d():
     Y = np.linspace(2.9, 3.8, 101)[::-2]
     dd = (2.1-1.625)/np.sqrt(2)
     X = np.linspace(-dd, dd, 401)
-    twod_plot(X, Y, R, "$P_1 - P_2$ (V)", "$J$ (V)", "Current (pA)", "4_isolated_dots")
+    twod_plot(X, Y, R, DETUNING, J, "Current (pA)", "4_isolated_dots")
 
     monty = Monty("summary.dc_detuning")
     result = monty.loaddata("detuning_vs_J.10")
@@ -178,7 +179,7 @@ def isolated_mode_2d():
     Y = np.linspace(3.3, 3.6, 201)[::2]
     dd = 0.1
     X = np.linspace(-dd, dd, 501)
-    twod_plot(X, Y, R, "$P_1 - P_2$ (V)", "$J$ (V)", "Current (pA)", "2_isolated_dots")
+    twod_plot(X, Y, R, DETUNING, J, "Current (pA)", "2_isolated_dots")
 
 
 def pauli_spin_blockade():
@@ -225,7 +226,7 @@ def coulomb_diamonds():
     R = result["R"][::2, :] * 1e12
     Y = np.linspace(-0.01, 0.01, 201)[::2] * 1e3
     X = np.linspace(3.6, 3.7, 501)
-    twod_plot(X, Y, R, "Plunger gate (V)", "Bias (mV)", "Current (pA)", "diamond")
+    twod_plot(X, Y, R, ST, "Bias (mV)", "Current (pA)", "diamond")
 
 
 def fake():
@@ -233,7 +234,7 @@ def fake():
     R = np.linspace(0, 0.02, x*y).reshape((y,x))
     J = np.linspace(3.35, 3.77, y)
     det = np.linspace(0, -0.006, x)
-    twod_plot(det, J, R, DETUNING, "J (V)", "Amplitude (dBm)", "psb_fake")
+    twod_plot(det, J, R, DETUNING, J, "Amplitude (dBm)", "psb_fake")
 
 
 def ramping():
@@ -300,6 +301,38 @@ def coulomb_rf_power_sweep():
     fig.patch.set_alpha(0.0)  # transparent axes
     save_plot("rf_coulomb_pwr_sweep")
 
+
+def fitted_feedback():
+    # Plot the feedback and out fit to it
+    data = loadraw("double_dot/fitted_feedback/1D_SET_sweep.xz")["data"]
+
+    R = data["R"] * 1e9
+    X = np.linspace(3.8, 3.95, 300)
+
+    # Average
+
+    # Differentiate
+    dR = np.diff(R)
+
+    bnds = [96, 118]  #[80, 140]
+    pX = X[bnds[0]:bnds[1]+1]
+    p = np.polyfit(pX, R[bnds[0]:bnds[1]+1], 8)
+    print(p)
+    pR = np.polyval(p, pX)
+
+    fig, ax = plt.subplots()
+    ax.plot(X, R, color=default_color)
+    ax.plot(pX, pR, color=default_color_2, label="Polynominal fit")
+    ax.plot(X[bnds], R[bnds], "x", label="Bounds")
+    ax.legend()
+    ax.set_xlabel(ST)
+    ax.set_ylabel("Current (pA)")
+    # ax.grid()
+    plt.tight_layout()
+    fig.patch.set_alpha(0.0)  # transparent axes
+    save_plot("fitted_feedback")
+
+
 ## Run everything ##
 
 
@@ -315,7 +348,9 @@ def main():
     fake()
     ramping()
     coulomb_rf_power_sweep()
+    fitted_feedback()
 
 
 if __name__ == "__main__":
     main()
+    #pauli_spin_blockade()
