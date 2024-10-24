@@ -10,8 +10,10 @@ Functions to plot the plots used in my thesis.
 from monty import Monty, loadraw
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.pylab as pylab
 import numpy as np
 import os
+import pandas as pd
 
 
 default_ftype = ".pdf"
@@ -24,6 +26,16 @@ STm = "Plunger $\\phi_S$ (mV)"
 DETUNING = "Dot detuning $\\phi_1 - \\phi_2$ (V)"
 DETUNINGm = "Dot detuning $\\phi_1 - \\phi_2$ (mV)"
 J = "Interaction gate $\\beta_1$ (V)"
+
+
+# Set the default axis label size to a larger setting
+params = {
+    "axes.labelsize": "x-large",
+    'axes.titlesize': 'x-large',
+    'xtick.labelsize': 'x-large',
+    'ytick.labelsize': 'x-large',
+}
+pylab.rcParams.update(params)
 
 ## Common functions ##
 
@@ -355,6 +367,22 @@ def set_overview():
     twod_plot(X, Y, R[:k, :], ST, "Barrier $\\beta_{S1} = \\beta_{S2}$ (V)", "Current (pA)", "overview_detailed")
 
 
+def shfqc_noise():
+    from monty.raw import DATA_DIR
+    on = pd.read_csv(os.path.join(DATA_DIR, "oscilloscope", "shfqc_noise", "on.csv"))
+    off = pd.read_csv(os.path.join(DATA_DIR, "oscilloscope", "shfqc_noise", "off.csv"))
+
+    fig, ax = plt.subplots()
+    ax.plot(on["T"] * 1e6, on["X"] * 1e3, "-", color=default_color, label="On")
+    ax.plot(off["T"] * 1e6, off["X"] * 1e3, "-", color=default_color_2, label="Off")
+    ax.set_xlabel("Time ($\\mu s$)")
+    ax.set_ylabel("Voltage (mV)")
+    ax.legend()
+    plt.tight_layout()
+    fig.patch.set_alpha(0.0)  # transparent axes
+    save_plot("shfqc_noise")
+
+
 ## Run everything ##
 
 
@@ -371,10 +399,11 @@ def main():
     ramping()
     coulomb_rf_power_sweep()
     fitted_feedback()
+    set_overview()
+    shfqc_noise()
 
 
 if __name__ == "__main__":
-    #main()
-    set_overview()
+    main()
 
 
