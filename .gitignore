@@ -4,3 +4,4 @@ Pulse_Sheets/
 *.log
 .ipynb_checkpoints/
 .idea/
+*.pdf
