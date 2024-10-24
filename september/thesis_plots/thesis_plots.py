@@ -54,15 +54,20 @@ def save_plot(fname, ftype=None):
     path = os.path.join('figures', fname + ftype)
     print(f"Saved to {path}")
     plt.savefig(path, bbox_inches='tight')
+    plt.close()
 
 
-def plot_amp_phase(X, amp, phase, xlabel="P1 voltage", fname="fname"):
+def plot_amp_phase(X, amp, phase, xlabel="P1 voltage", phaselabel="Phase (deg)", amplabel="Amplitude (dBm)", fname="fname", sci=False):
     """Plot both amplitude and phase of a result."""
     fig, (ax0, ax1) = plt.subplots(nrows=2, sharex=True)
     ax0.plot(X, amp, ".", color=default_color)
     ax1.plot(X, phase, ".", color=default_color_2)
-    ax0.set_ylabel("Amplitude (dBm)")
-    ax1.set_ylabel("Phase (deg)")
+
+    if sci:
+        ax0.yaxis.major.formatter.set_powerlimits((0, 0))
+        ax1.yaxis.major.formatter.set_powerlimits((0, 0))
+    ax0.set_ylabel(amplabel)
+    ax1.set_ylabel(phaselabel)
     ax1.set_xlabel(xlabel)
     fig.align_ylabels([ax0, ax1])
     plt.tight_layout()
@@ -139,7 +144,7 @@ def naive_detuning_1d():
 
     monty = Monty("sam.load_e2")
     result = monty.loaddata("P1_scan.7")
-    X = np.linspace(2.1, 1.75, 600)
+    X = np.linspace(2.1-1.75, 1.75-2.1, 600)
     Y = result["R"] * 1e12
     oned_plot(X, Y, xlabel=DETUNING, ylabel="Current (pA)", fname="without_feedback")
 
@@ -214,7 +219,7 @@ def pauli_spin_blockade():
     X = np.linspace(0, -0.006, 1001) * 1e3
     d_phase = mes_phase - ref_phase
     d_amp = mes_amp - ref_amp
-    plot_amp_phase(X, d_amp, d_phase, DETUNINGm, "1d_pauli")
+    plot_amp_phase(X, d_amp, d_phase, xlabel=DETUNINGm, fname="1d_pauli", sci=True)
 
 
 def coulomb_in_rf():
@@ -224,7 +229,7 @@ def coulomb_in_rf():
     amp = autodb(data)
     phase = autodeg(data)
     X = np.linspace(0, -0.4, 401) * 1e3
-    plot_amp_phase(X, amp, phase, STm, "rf_coulomb")
+    plot_amp_phase(X, amp, phase, xlabel=STm, fname="rf_coulomb")
 
 
 def impedance_network():
@@ -232,8 +237,16 @@ def impedance_network():
     data = monty.loadrun("spectroscopy")["data"]
     amp = autodb(data)
     phase = autodeg(data)
+
     X = np.linspace(300, 500, 401)
-    plot_amp_phase(X, amp, phase, "Impedance frequency (MHz)", "impedance_network")
+
+    # Take a linear fit of the phase measurement and remove it
+    p = np.polyfit(X, phase, 1)
+    print(p)
+    lin_phase = np.polyval(p, X)
+    phase -= lin_phase
+
+    plot_amp_phase(X, amp, phase, xlabel="Impedance frequency (MHz)", fname="impedance_network", phaselabel="$\\Delta$ Phase (deg)")
 
 
 def coulomb_diamonds():
@@ -271,6 +284,11 @@ def ramping():
     gamp -= gamp[0]
     wamp -= wamp[0]
     print(monty.parameters)
+
+    # Normalise as arbitrary anyway
+    m = np.abs(np.min(wamp))
+    gamp /= m
+    wamp /= m
 
     fig, ax = plt.subplots()
     ax.plot(gX, gamp, ".", color=default_color, label="Ramp = 0.13 mV/s")
